@@ -740,11 +740,9 @@ footer {
   height: 100%;
   border-radius: 100px;
   background: linear-gradient(90deg, var(--accent), var(--accent2));
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 1.2s cubic-bezier(0.22,1,0.36,1);
+  width: 0%;
+  transition: width 1.2s cubic-bezier(0.22,1,0.36,1);
 }
-.prog-fill.animate { transform: scaleX(1); }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 900px) {
@@ -760,3 +758,4 @@ footer {
   .hero-stats { flex-wrap: wrap; }
   .info-grid { grid-template-columns: 1fr; }
 }
+
