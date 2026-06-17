@@ -155,7 +155,7 @@ nav.scrolled {
   font-family: var(--display);
   font-size: clamp(4rem, 9vw, 9rem);
   font-weight: 800;
-  line-height: 0.92;
+  line-height: 0.8;
   letter-spacing: -0.04em;
   margin-bottom: 1.2rem;
   opacity: 0; transform: translateY(30px);
@@ -456,6 +456,7 @@ nav.scrolled {
   position: absolute; inset: 0;
   background: linear-gradient(135deg, rgba(91,111,255,0.04) 0%, transparent 60%);
   opacity: 0; transition: opacity 0.4s;
+  pointer-events: none;
 }
 .skill-card:hover { background: #0e1428; }
 .skill-card:hover::before { opacity: 1; }
@@ -492,6 +493,7 @@ nav.scrolled {
 
 .skill-tags {
   display: flex; flex-wrap: wrap; gap: 0.5rem;
+  position: relative; z-index: 2;
 }
 .skill-tag {
   font-family: var(--mono);
@@ -819,3 +821,4 @@ footer {
   .contact-inner { gap: 2rem; }
   .cert-card { padding: 1.5rem 1rem; }
 }
+
