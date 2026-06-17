@@ -91,9 +91,28 @@ document.querySelectorAll('.skill-tag').forEach(tag => {
 })();
 
 // --- SKILL MODAL DATA ---
-const skillExplanations = {
-  "OSI 7-Layer": "The Open Systems Interconnection model describes 7 layers of network communication, from physical hardware to application interfaces. Crucial for troubleshooting and network design.",
-  "IPv4 / IPv6": "Protocols responsible for routing packets across networks. IPv4 uses 32-bit addresses, while IPv6 uses 128-bit addresses to solve IP exhaustion and improve security routing.",
+const skillExplanations = {  "OSI 7-Layer": <p>The Open Systems Interconnection model describes 7 layers of network communication, from physical hardware to application interfaces. Crucial for troubleshooting and network design.</p>
+<div class="osi-stack">
+  <div class="osi-layer" style="--delay: 0.1s"><span>7</span> Application</div>
+  <div class="osi-layer" style="--delay: 0.2s"><span>6</span> Presentation</div>
+  <div class="osi-layer" style="--delay: 0.3s"><span>5</span> Session</div>
+  <div class="osi-layer" style="--delay: 0.4s"><span>4</span> Transport</div>
+  <div class="osi-layer" style="--delay: 0.5s"><span>3</span> Network</div>
+  <div class="osi-layer" style="--delay: 0.6s"><span>2</span> Data Link</div>
+  <div class="osi-layer" style="--delay: 0.7s"><span>1</span> Physical</div>
+</div>,  "IPv4 / IPv6": <p>Protocols responsible for routing packets across networks. IPv4 uses 32-bit addresses, while IPv6 uses 128-bit addresses to solve IP exhaustion and improve security routing.</p>
+<div class="ip-compare">
+  <div class="ip-box ipv4">
+    <div class="ip-title">IPv4</div>
+    <div class="ip-addr">192.168.1.1</div>
+    <div class="ip-stat">32-bit (4.3 Billion)</div>
+  </div>
+  <div class="ip-box ipv6">
+    <div class="ip-title">IPv6</div>
+    <div class="ip-addr">2001:0db8:85a3::8a2e:0370:7334</div>
+    <div class="ip-stat">128-bit (Undepletable)</div>
+  </div>
+</div>,
   "Subnetting": "The practice of dividing a network into two or more smaller networks. Improves routing efficiency, security, and reduces broadcast domain sizes.",
   "OSPF": "Open Shortest Path First is a link-state routing protocol used to find the best path for packets in large IP networks.",
   "DNS": "Domain Name System translates human-readable domain names into IP addresses. Understanding DNS is critical for preventing spoofing and cache poisoning attacks.",
@@ -135,7 +154,7 @@ document.querySelectorAll('.skill-tag').forEach(tag => {
   tag.addEventListener('click', () => {
     const skillName = tag.innerText.trim();
     modalTitle.innerText = skillName;
-    modalBody.innerText = skillExplanations[skillName] || "This skill showcases my proficiency in " + skillName + ". Contact me to learn more about my hands-on experience in this area.";
+    modalBody.innerHTML = skillExplanations[skillName] || "This skill showcases my proficiency in " + skillName + ". Contact me to learn more about my hands-on experience in this area.";
     modal.classList.add('active');
   });
 });
@@ -147,3 +166,4 @@ closeModal.addEventListener('click', () => {
 modal.addEventListener('click', (e) => {
   if(e.target === modal) modal.classList.remove('active');
 });
+
