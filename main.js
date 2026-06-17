@@ -167,3 +167,136 @@ modal.addEventListener('click', (e) => {
   if(e.target === modal) modal.classList.remove('active');
 });
 
+// ── HERO STAT COUNT-UP ANIMATION ──
+(function() {
+  const statNums = document.querySelectorAll('.hero-stat-num[data-target]');
+  let counted = false;
+
+  function animateCount(el) {
+    const target = parseInt(el.dataset.target);
+    const suffix = el.dataset.suffix || '';
+    const duration = 1800;
+    const start = performance.now();
+
+    function update(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(eased * target);
+      el.innerHTML = current + (suffix ? '<span>' + suffix + '</span>' : '');
+      if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+  }
+
+  const statsObs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && !counted) {
+      counted = true;
+      statNums.forEach((el, i) => {
+        setTimeout(() => animateCount(el), i * 200);
+      });
+    }
+  }, { threshold: 0.3 });
+
+  const statsSection = document.querySelector('.hero-stats');
+  if (statsSection) statsObs.observe(statsSection);
+})();
+
+// ── APPLE-STYLE ANIMATIONS ──
+
+// 1. Loading Curtain
+window.addEventListener('load', () => {
+  const curtain = document.getElementById('loadingCurtain');
+  const bar = document.querySelector('.loading-bar-fill');
+  if (curtain && bar) {
+    bar.style.width = '100%';
+    setTimeout(() => {
+      curtain.classList.add('hidden');
+    }, 5000);
+  }
+});
+
+// 2. Scroll Progress Bar
+const scrollProgress = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => {
+  if (scrollProgress) {
+    const scrollPx = document.documentElement.scrollTop;
+    const winHeightPx = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrollLen = `${scrollPx / winHeightPx * 100}%`;
+    scrollProgress.style.width = scrollLen;
+  }
+});
+
+// 3. 3D Tilt Effect on Cards
+const tiltCards = document.querySelectorAll('.skill-card, .cert-card, .project-card');
+tiltCards.forEach(card => {
+  card.style.transformStyle = 'preserve-3d';
+  card.style.perspective = '1000px';
+  
+  card.addEventListener('mousemove', e => {
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = ((y - centerY) / centerY) * -5;
+    const rotateY = ((x - centerX) / centerX) * 5;
+    
+    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+    card.style.transition = 'none';
+  });
+  
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+    card.style.transition = 'transform 0.5s ease-out';
+  });
+});
+
+// 4. Parallax Hero Orbs
+const orb1 = document.querySelector('.hero-orb');
+const orb2 = document.querySelector('.hero-orb2');
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  if (orb1) orb1.style.transform = `translate(-50%, calc(-50% + ${y * 0.4}px))`;
+  if (orb2) orb2.style.transform = `translateY(${y * 0.2}px)`;
+});
+
+// 5. Magnetic Hover on CTA Buttons
+const magneticEls = document.querySelectorAll('.btn-main, .btn-outline');
+magneticEls.forEach(el => {
+  el.addEventListener('mousemove', e => {
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    el.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+    el.style.transition = 'none';
+  });
+  el.addEventListener('mouseleave', () => {
+    el.style.transform = '';
+    el.style.transition = 'transform 0.3s cubic-bezier(0.22,1,0.36,1)';
+  });
+});
+
+// 6. Text Reveal in About section
+const aboutParas = document.querySelectorAll('.about-body p');
+aboutParas.forEach(p => {
+  // Save HTML content to preserve <strong> tags if possible, or just strip them for animation simplicity
+  const html = p.innerHTML;
+  // Let's keep it simple and just do words, but we need to handle HTML elements inside
+  // For safety, let's just do text nodes or split by space but keep innerHTML.
+  // Actually, a simpler scroll reveal is to just reveal the whole paragraphs slightly differently,
+  // or use intersection observer on the paragraphs to fade them up smoothly.
+  // Since we already have .rev classes, let's enhance them instead!
+});
+
+const revElements = document.querySelectorAll('.rev');
+const revObs = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+revElements.forEach(el => revObs.observe(el));
+
+
