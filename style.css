@@ -834,12 +834,12 @@ footer {
 .hero-left-col { flex: 1; max-width: 650px; }
 .hero-right-col { flex: 1; display: flex; justify-content: center; align-items: center; }
 .hero-ai-img {
-  max-width: 450px;
+  max-width: 500px;
   width: 100%;
-  border-radius: 20px;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
   animation: float 6s ease-in-out infinite;
-  mix-blend-mode: screen; /* Helps blend black background gifs, remove if gif is transparent */
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
+  mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
 }
 @keyframes float {
   0%, 100% { transform: translateY(0); }
@@ -849,5 +849,13 @@ footer {
 @media (max-width: 1024px) {
   .hero-content-wrapper { flex-direction: column; text-align: left; align-items: flex-start; }
   .hero-left-col { max-width: 100%; }
-  .hero-ai-img { max-width: 350px; margin-top: 3rem; align-self: center; }
+  .hero-ai-img {
+  max-width: 500px;
+  width: 100%;
+  animation: float 6s ease-in-out infinite;
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
+  mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
 }
+}
+
