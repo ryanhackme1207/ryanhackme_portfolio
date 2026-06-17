@@ -142,6 +142,15 @@ window.addEventListener('resize', () => {
 // ---- GSAP ANIMATIONS ----
 gsap.registerPlugin(ScrollTrigger);
 
+// Typed.js Animation
+const typed = new Typed('.typed-text', {
+    strings: ['Multimedia University Student', 'Cybersecurity Enthusiast', 'Network Security Expert', 'Network Engineering Prodigy'],
+    typeSpeed: 50,
+    backSpeed: 30,
+    backDelay: 2000,
+    loop: true
+});
+
 // Hero Section Intro
 const tl = gsap.timeline();
 tl.from(".logo", { y: -50, opacity: 0, duration: 1, ease: "power3.out" })
