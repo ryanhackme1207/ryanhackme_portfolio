@@ -822,3 +822,32 @@ footer {
   .cert-card { padding: 1.5rem 1rem; }
 }
 
+
+/* -- HERO AI IMAGE -- */
+.hero-content-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4rem;
+  width: 100%;
+}
+.hero-left-col { flex: 1; max-width: 650px; }
+.hero-right-col { flex: 1; display: flex; justify-content: center; align-items: center; }
+.hero-ai-img {
+  max-width: 450px;
+  width: 100%;
+  border-radius: 20px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
+  animation: float 6s ease-in-out infinite;
+  mix-blend-mode: screen; /* Helps blend black background gifs, remove if gif is transparent */
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@media (max-width: 1024px) {
+  .hero-content-wrapper { flex-direction: column; text-align: left; align-items: flex-start; }
+  .hero-left-col { max-width: 100%; }
+  .hero-ai-img { max-width: 350px; margin-top: 3rem; align-self: center; }
+}
