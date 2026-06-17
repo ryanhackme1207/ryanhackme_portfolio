@@ -827,12 +827,12 @@ footer {
 .hero-content-wrapper {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 4rem;
   width: 100%;
 }
 .hero-left-col { flex: 1; max-width: 650px; }
-.hero-right-col { flex: 1; display: flex; justify-content: center; align-items: center; }
+.hero-right-col { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding-top: 5rem; }
 .hero-ai-img {
   max-width: 500px;
   width: 100%;
@@ -858,4 +858,5 @@ footer {
   mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
 }
 }
+
 
