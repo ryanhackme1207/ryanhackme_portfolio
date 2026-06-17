@@ -135,7 +135,7 @@ document.querySelectorAll('.skill-tag').forEach(tag => {
   tag.addEventListener('click', () => {
     const skillName = tag.innerText.trim();
     modalTitle.innerText = skillName;
-    modalBody.innerText = skillExplanations[skillName] || "This skill showcases my proficiency in " + skillName + ". Contact me to learn more about my hands-on experience in this area.;
+    modalBody.innerText = skillExplanations[skillName] || "This skill showcases my proficiency in " + skillName + ". Contact me to learn more about my hands-on experience in this area.";
     modal.classList.add('active');
   });
 });
