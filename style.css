@@ -834,7 +834,7 @@ footer {
 .hero-left-col { flex: 1; max-width: 650px; }
 .hero-right-col { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding-top: 5rem; }
 .hero-ai-img {
-  max-width: 500px;
+  max-width: 600px;
   width: 100%;
   animation: float 6s ease-in-out infinite;
   mix-blend-mode: screen;
