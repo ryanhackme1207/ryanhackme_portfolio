@@ -842,8 +842,8 @@ footer {
   mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
 }
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+  0%, 100% { transform: translateY(0) scale(1.5); }
+  50% { transform: translateY(-20px) scale(1.5); }
 }
 
 @media (max-width: 1024px) {
