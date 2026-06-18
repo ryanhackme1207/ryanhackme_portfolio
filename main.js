@@ -90,16 +90,93 @@ document.querySelectorAll('.skill-tag').forEach(tag => {
   });
 })();
 
+function getComplianceHtml(title, desc) {
+  return `<p>${desc}</p>
+<div class="compliance-interactive">
+  <div class="comp-vault">
+    <div class="comp-doc">
+      <div class="doc-line"></div>
+      <div class="doc-line"></div>
+      <div class="doc-line short"></div>
+      <div class="doc-stamp">${title}</div>
+    </div>
+    <div class="comp-scanner"></div>
+    <div class="comp-shield">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+    </div>
+  </div>
+  <div class="comp-status">Status: </div>
+</div>`;
+}
+
+function getNetworkSimHtml(title, desc, isOspf) {
+  if (isOspf) {
+    return `<p>${desc}</p>
+<div class="network-sim-container">
+  <svg viewBox="0 0 400 200" width="100%" height="200px" class="net-svg">
+    <path d="M 100,150 L 200,50 L 300,150 Z" fill="none" stroke="var(--border2)" stroke-width="4"/>
+    <path class="ospf-active-link" d="M 100,150 L 200,50 L 300,150" fill="none" stroke="var(--lime)" stroke-width="4" stroke-dasharray="10 10">
+       <animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite"/>
+    </path>
+    <g class="net-node" data-info="<strong>Router 1:</strong><br>Cost to R3: 10<br>Role: Backbone">
+      <circle cx="100" cy="150" r="25" fill="var(--surface)" stroke="var(--accent2)" stroke-width="2" class="node-bg"/>
+      <text x="100" y="155" fill="var(--text)" font-family="monospace" font-size="12" text-anchor="middle">R1</text>
+    </g>
+    <g class="net-node" data-info="<strong>Router 2:</strong><br>Cost to R1: 5<br>Cost to R3: 5">
+      <circle cx="200" cy="50" r="25" fill="var(--surface)" stroke="var(--accent2)" stroke-width="2" class="node-bg"/>
+      <text x="200" y="55" fill="var(--text)" font-family="monospace" font-size="12" text-anchor="middle">R2</text>
+    </g>
+    <g class="net-node" data-info="<strong>Router 3:</strong><br>Cost to R1: 10<br>Role: Area 1">
+      <circle cx="300" cy="150" r="25" fill="var(--surface)" stroke="var(--accent2)" stroke-width="2" class="node-bg"/>
+      <text x="300" y="155" fill="var(--text)" font-family="monospace" font-size="12" text-anchor="middle">R3</text>
+    </g>
+  </svg>
+  <div class="net-info-panel" id="netInfoPanel">Hover over a router to view OSPF routing metrics.</div>
+</div>`;
+  }
+  
+  return `<p>${desc}</p>
+<div class="network-sim-container">
+  <svg viewBox="0 0 400 200" width="100%" height="200px" class="net-svg">
+    <path class="net-wire" d="M 50,150 L 150,150 L 250,100 L 350,100" fill="none" stroke="var(--border2)" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="0" cy="0" r="6" fill="var(--lime)">
+       <animateMotion path="M 50,150 L 150,150 L 250,100 L 350,100" dur="2.5s" repeatCount="indefinite" />
+    </circle>
+    <rect x="30" y="135" width="40" height="30" rx="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="50" y="155" fill="var(--text)" font-family="monospace" font-size="12" text-anchor="middle">PC</text>
+    <g class="net-node" data-info="<strong>Switch MAC Table:</strong><br>Port 1: 00:1A:2B:3C:4D:5E (PC)<br>Port 2: 00:1A:2B:3C:4D:5F (Router)">
+      <rect x="130" y="140" width="40" height="20" rx="2" fill="var(--surface)" stroke="var(--lime)" stroke-width="2" class="node-bg"/>
+      <circle cx="140" cy="150" r="3" fill="var(--lime)"/> <circle cx="150" cy="150" r="3" fill="var(--lime)"/> <circle cx="160" cy="150" r="3" fill="var(--lime)"/>
+      <text x="150" y="175" fill="var(--text)" font-family="monospace" font-size="12" text-anchor="middle">Switch</text>
+    </g>
+    <g class="net-node" data-info="<strong>Router Routing Table:</strong><br>192.168.1.0/24 -&gt; Eth0 (Switch)<br>0.0.0.0/0 -&gt; WAN (Cloud)">
+      <circle cx="250" cy="100" r="25" fill="var(--surface)" stroke="var(--accent2)" stroke-width="2" class="node-bg"/>
+      <path d="M 240,100 L 260,100 M 250,90 L 250,110" stroke="var(--accent2)" stroke-width="2"/>
+      <text x="250" y="145" fill="var(--text)" font-family="monospace" font-size="12" text-anchor="middle">Router</text>
+    </g>
+    <path d="M 330,100 Q 330,80 350,80 Q 370,80 370,100 Q 390,100 390,120 Q 370,120 350,120 Q 330,120 330,100" fill="var(--surface)" stroke="var(--muted)" stroke-width="2"/>
+    <text x="360" y="105" fill="var(--text)" font-family="monospace" font-size="12" text-anchor="middle">Cloud</text>
+  </svg>
+  <div class="net-info-panel" id="netInfoPanel">Hover over the Switch or Router to inspect their configuration.</div>
+</div>`;
+}
+
 // --- SKILL MODAL DATA ---
-const skillExplanations = {  "OSI 7-Layer": `<p>The Open Systems Interconnection model describes 7 layers of network communication, from physical hardware to application interfaces. Crucial for troubleshooting and network design.</p>
-<div class="osi-stack">
-  <div class="osi-layer" style="--delay: 0.1s"><span>7</span> Application</div>
-  <div class="osi-layer" style="--delay: 0.2s"><span>6</span> Presentation</div>
-  <div class="osi-layer" style="--delay: 0.3s"><span>5</span> Session</div>
-  <div class="osi-layer" style="--delay: 0.4s"><span>4</span> Transport</div>
-  <div class="osi-layer" style="--delay: 0.5s"><span>3</span> Network</div>
-  <div class="osi-layer" style="--delay: 0.6s"><span>2</span> Data Link</div>
-  <div class="osi-layer" style="--delay: 0.7s"><span>1</span> Physical</div>
+const skillExplanations = {  "OSI 7-Layer": `<p>The OSI model describes network communication in 7 layers. <strong>Hover over the stack</strong> to watch a packet travel, or hover over a layer to see its details.</p>
+<div class="osi-interactive-wrapper">
+  <div class="osi-stack-interactive">
+    <div class="osi-packet">DATA</div>
+    <div class="osi-layer-int" data-desc="End-user interface (HTTP, FTP). Data is generated here."><span>7</span> Application</div>
+    <div class="osi-layer-int" data-desc="Data formatting, encryption, and compression (SSL/TLS, JPEG)."><span>6</span> Presentation</div>
+    <div class="osi-layer-int" data-desc="Establishes, maintains, and terminates connections (RPC, NetBIOS)."><span>5</span> Session</div>
+    <div class="osi-layer-int" data-desc="Reliable data transfer, segmentation, and error checking (TCP, UDP)."><span>4</span> Transport</div>
+    <div class="osi-layer-int" data-desc="Routing packets across networks via IP addresses (IP, ICMP, Routers)."><span>3</span> Network</div>
+    <div class="osi-layer-int" data-desc="Node-to-node frame delivery, MAC addresses, and switches (Ethernet, VLAN)."><span>2</span> Data Link</div>
+    <div class="osi-layer-int" data-desc="Raw bit stream transmission over physical medium (Cables, Hubs, Wi-Fi)."><span>1</span> Physical</div>
+  </div>
+  <div class="osi-info-box" id="osiInfoBox">
+    <strong>Hover over a layer</strong> to view its function.
+  </div>
 </div>`,  "IPv4 / IPv6": `<p>Protocols responsible for routing packets across networks. IPv4 uses 32-bit addresses, while IPv6 uses 128-bit addresses to solve IP exhaustion and improve security routing.</p>
 <div class="ip-compare">
   <div class="ip-box ipv4">
@@ -113,15 +190,22 @@ const skillExplanations = {  "OSI 7-Layer": `<p>The Open Systems Interconnection
     <div class="ip-stat">128-bit (Undepletable)</div>
   </div>
 </div>`,
-  "Subnetting": "The practice of dividing a network into two or more smaller networks. Improves routing efficiency, security, and reduces broadcast domain sizes.",
-  "OSPF": "Open Shortest Path First is a link-state routing protocol used to find the best path for packets in large IP networks.",
+  "Subnetting": `<p>Subnetting divides a single large network into smaller, manageable sub-networks to improve security and performance. <strong>Hover over the main network</strong> below to see it split!</p>
+<div class="subnet-interactive">
+  <div class="subnet-block main-net">192.168.1.0/24<br><span>(256 IP Addresses)</span></div>
+  <div class="subnet-split">
+    <div class="subnet-block sub">192.168.1.0/25<br><span>(128 IPs)</span></div>
+    <div class="subnet-block sub">192.168.1.128/25<br><span>(128 IPs)</span></div>
+  </div>
+</div>`,
+  "OSPF": getNetworkSimHtml("OSPF", "Open Shortest Path First is a link-state routing protocol. Hover over the routers below to see how they calculate the best paths.", true),
   "DNS": "Domain Name System translates human-readable domain names into IP addresses. Understanding DNS is critical for preventing spoofing and cache poisoning attacks.",
   "AAA / RADIUS": "Authentication, Authorization, and Accounting frameworks. RADIUS is a protocol used to centrally manage network access.",
   "STP": "Spanning Tree Protocol prevents loop topologies in bridged Ethernet local area networks.",
   "IPSec VPN": "A secure network protocol suite that authenticates and encrypts packets of data to provide secure encrypted communication between two computers over an IP network.",
   "ACL": "Access Control Lists are a set of rules that grant or deny access to network environments, operating as a fundamental network firewall.",
   "Firewall Config": "Designing, implementing, and maintaining rules to monitor and control incoming and outgoing network traffic based on predetermined security rules.",
-  "Switches & Routers": "Core networking hardware. Switches connect devices on a computer network, while routers forward data packets between different computer networks.",
+  "Switches & Routers": getNetworkSimHtml("Switches & Routers", "Core networking hardware. Hover over the devices in this Packet Tracer-style topology to view their internal MAC and Routing tables.", false),
   
   "OWASP Top 10": "A standard awareness document representing a broad consensus about the most critical security risks to web applications (e.g., Injection, Broken Authentication).",
   "Kali Linux": "A Debian-derived Linux distribution designed for digital forensics and penetration testing, containing hundreds of pre-installed security tools.",
@@ -131,16 +215,36 @@ const skillExplanations = {  "OSI 7-Layer": `<p>The Open Systems Interconnection
   "Hashcat": "The world's fastest and most advanced password recovery utility, supporting five unique modes of attack for over 300 highly-optimized hashing algorithms.",
   "SQLMap": "An open source penetration testing tool that automates the process of detecting and exploiting SQL injection flaws and taking over of database servers.",
   "SIEM": "Security Information and Event Management systems provide real-time analysis of security alerts generated by applications and network hardware.",
-  "Phishing": "The fraudulent attempt to obtain sensitive information by disguising oneself as a trustworthy entity in an electronic communication. I test employee awareness using simulated phishing.",
+  "Phishing": `<p>The fraudulent attempt to obtain sensitive information. <strong>Hover over the highlighted parts</strong> of this simulated email to reveal the hidden threat.</p>
+<div class="phishing-interactive">
+  <div class="email-mock">
+    <div class="email-header">
+      From: <span class="suspect-item" data-reveal="hacker123@evil-domain.com">IT-Support &lt;support@company.com&gt;</span><br>
+      Subject: URGENT: Password Expiry
+    </div>
+    <div class="email-body">
+      Dear User, your password will expire in 2 hours.<br><br>
+      <span class="suspect-btn suspect-item" data-reveal="http://192.168.1.55/login">Verify Account</span>
+    </div>
+  </div>
+</div>`,
   "Win Exploitation": "Identifying and leveraging vulnerabilities within the Windows operating system and its associated services to gain unauthorized access.",
   
-  "CIA Triad": "Confidentiality, Integrity, and Availability. The core model designed to guide policies for information security within an organization.",
+  "CIA Triad": `<p>Confidentiality, Integrity, and Availability. <strong>Hover over the pillars</strong> below to understand the core model of information security.</p>
+<div class="cia-interactive">
+  <div class="cia-pillar" data-title="Confidentiality" data-desc="Ensuring sensitive data is accessed only by authorized people. Example: Encryption.">C</div>
+  <div class="cia-pillar" data-title="Integrity" data-desc="Maintaining accuracy and trustworthiness of data over its life cycle. Example: Hashing.">I</div>
+  <div class="cia-pillar" data-title="Availability" data-desc="Ensuring systems and data are available when needed. Example: DDoS protection.">A</div>
+</div>
+<div class="cia-info-box" id="ciaInfoBox">
+  <strong>Hover over a pillar</strong> to see its details.
+</div>`,
   "Incident Response": "An organized approach to addressing and managing the aftermath of a security breach or cyberattack to limit damage and reduce recovery time.",
-  "HIPAA": "Health Insurance Portability and Accountability Act. I understand the stringent data privacy and security provisions for safeguarding medical information.",
-  "PDPA": "Personal Data Protection Act. Malaysian legislation that regulates the processing of personal data in commercial transactions.",
-  "GDPR": "General Data Protection Regulation. The toughest privacy and security law in the world, imposing obligations onto organizations anywhere.",
-  "PCI-DSS": "Payment Card Industry Data Security Standard. Information security standard for organizations that handle branded credit cards from the major card schemes.",
-  "ISO 27001": "An international standard on how to manage information security, providing requirements for an Information Security Management System (ISMS).",
+  "HIPAA": getComplianceHtml("HIPAA", "Health Insurance Portability and Accountability Act. Hover to see how medical data is safeguarded."),
+  "PDPA": getComplianceHtml("PDPA", "Personal Data Protection Act. Hover to see data protection enforcement."),
+  "GDPR": getComplianceHtml("GDPR", "General Data Protection Regulation. Hover to see stringent privacy compliance."),
+  "PCI-DSS": getComplianceHtml("PCI-DSS", "Payment Card Industry Data Security Standard. Hover to encrypt card data."),
+  "ISO 27001": getComplianceHtml("ISO 27001", "ISMS international standard. Hover to implement security framework."),
   "Frameworks": "Deep understanding of various security frameworks (NIST, CIS Controls) that provide a foundation for building a robust security posture."
 };
 
@@ -156,6 +260,52 @@ document.querySelectorAll('.skill-tag').forEach(tag => {
     modalTitle.innerText = skillName;
     modalBody.innerHTML = skillExplanations[skillName] || "This skill showcases my proficiency in " + skillName + ". Contact me to learn more about my hands-on experience in this area.";
     modal.classList.add('active');
+    
+    // Initialize specific interactions if present
+    if (skillName === "OSI 7-Layer") {
+      const layers = document.querySelectorAll('.osi-layer-int');
+      const infoBox = document.getElementById('osiInfoBox');
+      layers.forEach(layer => {
+        layer.addEventListener('mouseenter', () => {
+          infoBox.innerHTML = `<strong>Layer ${layer.innerText}:</strong><br><br>${layer.dataset.desc}`;
+          infoBox.classList.add('highlight');
+        });
+        layer.addEventListener('mouseleave', () => {
+          infoBox.innerHTML = `<strong>Hover over a layer</strong> to view its function.`;
+          infoBox.classList.remove('highlight');
+        });
+      });
+    } else if (skillName === "CIA Triad") {
+      const pillars = document.querySelectorAll('.cia-pillar');
+      const infoBox = document.getElementById('ciaInfoBox');
+      pillars.forEach(pillar => {
+        pillar.addEventListener('mouseenter', () => {
+          infoBox.innerHTML = `<strong>${pillar.dataset.title}:</strong><br><br>${pillar.dataset.desc}`;
+          infoBox.classList.add('highlight');
+        });
+        pillar.addEventListener('mouseleave', () => {
+          infoBox.innerHTML = `<strong>Hover over a pillar</strong> to see its details.`;
+          infoBox.classList.remove('highlight');
+        });
+      });
+    } else if (skillName === "OSPF" || skillName === "Switches & Routers") {
+      const nodes = document.querySelectorAll('.net-node');
+      const infoPanel = document.getElementById('netInfoPanel');
+      if (nodes.length > 0 && infoPanel) {
+        nodes.forEach(node => {
+          node.addEventListener('mouseenter', () => {
+            infoPanel.innerHTML = node.dataset.info;
+            infoPanel.classList.add('highlight');
+            node.querySelector('.node-bg').style.fill = 'rgba(91,111,255,0.2)';
+          });
+          node.addEventListener('mouseleave', () => {
+            infoPanel.innerHTML = skillName === "OSPF" ? "Hover over a router to view OSPF routing metrics." : "Hover over the Switch or Router to inspect their configuration.";
+            infoPanel.classList.remove('highlight');
+            node.querySelector('.node-bg').style.fill = 'var(--surface)';
+          });
+        });
+      }
+    }
   });
 });
 
@@ -298,5 +448,35 @@ const revObs = new IntersectionObserver(entries => {
   });
 }, { threshold: 0.1 });
 revElements.forEach(el => revObs.observe(el));
+
+// 7. Theme Toggle (Light/Dark Mode)
+const themeToggleBtn = document.getElementById('themeToggle');
+const currentTheme = localStorage.getItem('theme');
+
+// If user previously selected light mode, apply it immediately
+if (currentTheme === 'light') {
+  document.body.classList.add('light-mode');
+  const aiImg = document.querySelector('.hero-ai-img');
+  if (aiImg) {
+    aiImg.src = 'asset/whitetheme_ai.gif';
+  }
+}
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener('click', () => {
+    document.body.classList.toggle('light-mode');
+    
+    const isLightMode = document.body.classList.contains('light-mode');
+    
+    // Update AI GIF
+    const aiImg = document.querySelector('.hero-ai-img');
+    if (aiImg) {
+      aiImg.src = isLightMode ? 'asset/whitetheme_ai.gif' : 'asset/ai.gif';
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
+  });
+}
 
 
