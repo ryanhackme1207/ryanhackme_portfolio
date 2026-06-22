@@ -56,8 +56,6 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
         position={[0, 5, 0]} 
         intensity={2.8} 
         color="#9c4df4" 
-        castShadow
-        shadow-bias={-0.001}
       />
 
       {/* Warm room lighting to make objects (fridge, chair, floor) visible */}
@@ -103,26 +101,26 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
       />
 
       {/* 2. DESK STRUCTURE */}
-      {/* Table Top (Deep obsidian/carbon color) */}
+      {/* Table Top (Sleek modern matte grey concrete/slate color) */}
       <mesh position={[0, 0.77, 0.2]} receiveShadow castShadow>
         <boxGeometry args={[5.2, 0.06, 2.2]} />
         <meshStandardMaterial 
-          color="#06030c" 
-          roughness={0.18} 
-          metalness={0.85} 
+          color="#525862" 
+          roughness={0.35} 
+          metalness={0.3} 
         />
       </mesh>
       
-      {/* Left side support pillar */}
+      {/* Left side support pillar (Industrial steel grey) */}
       <mesh position={[-2.4, 0.38, 0.2]} castShadow>
         <boxGeometry args={[0.08, 0.76, 2.0]} />
-        <meshStandardMaterial color="#0c0716" metalness={0.9} roughness={0.1} />
+        <meshStandardMaterial color="#353b45" metalness={0.85} roughness={0.25} />
       </mesh>
 
-      {/* Right side support pillar */}
+      {/* Right side support pillar (Industrial steel grey) */}
       <mesh position={[2.4, 0.38, 0.2]} castShadow>
         <boxGeometry args={[0.08, 0.76, 2.0]} />
-        <meshStandardMaterial color="#0c0716" metalness={0.9} roughness={0.1} />
+        <meshStandardMaterial color="#353b45" metalness={0.85} roughness={0.25} />
       </mesh>
 
       {/* Supporting backboard beam */}
@@ -138,23 +136,130 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
       </mesh>
 
       {/* 3. PERIPHERALS */}
-      {/* Keyboard with purple glow outline */}
+      {/* Mechanical Keyboard with keycaps & purple glow outline */}
       <group position={[0, 0.8, 0.5]}>
+        {/* Keyboard Chassis */}
         <mesh position={[0, 0.01, 0]} castShadow>
-          <boxGeometry args={[0.9, 0.025, 0.25]} />
-          <meshStandardMaterial color="#120822" roughness={0.5} />
+          <boxGeometry args={[0.92, 0.028, 0.28]} />
+          <meshStandardMaterial color="#0c0716" roughness={0.6} metalness={0.8} />
         </mesh>
-        <mesh position={[0, 0.001, 0]}>
-          <boxGeometry args={[0.93, 0.008, 0.28]} />
-          <meshBasicMaterial color="#b100e8" transparent opacity={0.5} />
+        {/* Keyboard Underglow base */}
+        <mesh position={[0, 0.002, 0]}>
+          <boxGeometry args={[0.95, 0.008, 0.31]} />
+          <meshBasicMaterial color="#b100e8" transparent opacity={0.6} />
         </mesh>
+
+        {/* TKL Mechanical Keycaps Grid */}
+        <group position={[0, 0.025, 0]}>
+          {[-2, -1, 0, 1, 2].map((rowIdx) => {
+            const z = rowIdx * 0.046; // 5 rows
+            return [-7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7].map((colIdx) => {
+              const x = colIdx * 0.056; // 15 columns
+              
+              // 1. Spacebar (Row 2, Center cols -1, 0, 1)
+              if (rowIdx === 2 && colIdx >= -2 && colIdx <= 2) {
+                if (colIdx === 0) {
+                  return (
+                    <mesh key={`spacebar`} position={[0, 0.008, z]} castShadow>
+                      <boxGeometry args={[0.26, 0.014, 0.038]} />
+                      <meshStandardMaterial color="#39ff14" roughness={0.4} emissive="#39ff14" emissiveIntensity={0.2} />
+                    </mesh>
+                  );
+                }
+                return null; // Skip other cols covered by spacebar
+              }
+
+              // 2. Special keys (WASD)
+              // W key: rowIdx = -1, colIdx = -4
+              // A, S, D keys: rowIdx = 0, colIdx = -5, -4, -3
+              const isWASD = (rowIdx === -1 && colIdx === -4) || (rowIdx === 0 && (colIdx === -5 || colIdx === -4 || colIdx === -3));
+
+              // Esc key: rowIdx = -2, colIdx = -7
+              const isEsc = rowIdx === -2 && colIdx === -7;
+
+              // Enter key: rowIdx = 0, colIdx = 6
+              const isEnter = rowIdx === 0 && colIdx === 6;
+
+              let keyColor = "#272730";
+              let keyEmissive = "#000000";
+              if (isWASD) {
+                keyColor = "#39ff14";
+                keyEmissive = "#39ff14";
+              } else if (isEsc) {
+                keyColor = "#39ff14";
+                keyEmissive = "#39ff14";
+              } else if (isEnter) {
+                keyColor = "#b100e8";
+                keyEmissive = "#b100e8";
+              } else if (colIdx === -7 || colIdx === 7 || rowIdx === -2) {
+                // Modifiers and Fn row
+                keyColor = "#1a122e";
+              }
+
+              return (
+                <mesh key={`${rowIdx}-${colIdx}`} position={[x, 0.008, z]} castShadow>
+                  <boxGeometry args={[0.046, 0.014, 0.036]} />
+                  <meshStandardMaterial 
+                    color={keyColor} 
+                    roughness={0.4} 
+                    emissive={keyEmissive}
+                    emissiveIntensity={keyEmissive !== "#000000" ? 0.8 : 0}
+                  />
+                </mesh>
+              );
+            });
+          })}
+        </group>
       </group>
 
-      {/* Mouse */}
-      <mesh position={[0.7, 0.815, 0.55]} castShadow>
-        <boxGeometry args={[0.08, 0.03, 0.14]} />
-        <meshStandardMaterial color="#180c2c" roughness={0.4} />
-      </mesh>
+      {/* Gaming Mouse Group */}
+      <group position={[0.7, 0.8, 0.55]} rotation={[0, -Math.PI / 12, 0]}>
+        {/* Mouse Base Pad/Plate */}
+        <mesh castShadow>
+          <boxGeometry args={[0.076, 0.01, 0.134]} />
+          <meshStandardMaterial color="#0c0715" roughness={0.7} />
+        </mesh>
+        
+        {/* Contoured Palm Rest Body */}
+        <mesh position={[0, 0.015, 0.02]} castShadow>
+          <boxGeometry args={[0.07, 0.028, 0.08]} />
+          <meshStandardMaterial color="#1f1435" roughness={0.3} metalness={0.2} />
+        </mesh>
+
+        {/* Left Clicker Button */}
+        <mesh position={[-0.018, 0.012, -0.04]} castShadow>
+          <boxGeometry args={[0.032, 0.02, 0.05]} />
+          <meshStandardMaterial color="#111115" roughness={0.4} />
+        </mesh>
+
+        {/* Right Clicker Button */}
+        <mesh position={[0.018, 0.012, -0.04]} castShadow>
+          <boxGeometry args={[0.032, 0.02, 0.05]} />
+          <meshStandardMaterial color="#111115" roughness={0.4} />
+        </mesh>
+
+        {/* Glowing Scroll Wheel */}
+        <mesh position={[0, 0.018, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.008, 0.008, 0.006, 12]} />
+          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={4} />
+        </mesh>
+
+        {/* Side Grip thumb buttons */}
+        <mesh position={[-0.039, 0.01, 0.01]}>
+          <boxGeometry args={[0.004, 0.008, 0.02]} />
+          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={2} />
+        </mesh>
+
+        {/* RGB Neon Seam Strip (Down the center split and back palm arch) */}
+        <mesh position={[0, 0.02, 0.01]}>
+          <boxGeometry args={[0.002, 0.022, 0.07]} />
+          <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={3} />
+        </mesh>
+        <mesh position={[0, 0.01, 0.055]} rotation={[0.4, 0, 0]}>
+          <boxGeometry args={[0.06, 0.012, 0.003]} />
+          <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={4} />
+        </mesh>
+      </group>
 
       {/* 4. CENTRAL MONITOR (VIRTUAL PC) */}
       <InteractiveObject 
@@ -201,11 +306,11 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
             />
           </mesh>
 
-          {/* Interactive virtual screen: 1000×600 px at scale 0.16 = 1.6×0.96 units — matches glass exactly */}
+          {/* Interactive virtual screen: Fits perfectly flush inside the 1.6x0.96 monitor glass */}
           <Html
             transform
-            scale={[0.16, 0.16, 0.16]}
-            position={[0, 0.9, 0.01]}
+            scale={[0.152, 0.152, 0.152]}
+            position={[0, 0.9, -0.005]}
           >
             <div
               style={{
@@ -225,38 +330,48 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
         </group>
       </InteractiveObject>
 
-      {/* 5. SECURITY USB KEY (SKILLS & CERTS) */}
+      {/* 5. SECURITY USB KEY (SKILLS & CERTS - RED/BLACK SANDISK STYLE) */}
       <InteractiveObject 
         onClick={() => onNavigate('usb')} 
         activeView={activeView}
         targetView="usb"
-        glowColor="#39ff14"
+        glowColor="#ff3b30"
       >
         <group position={[-1.7, 0.8, 0.45]} rotation={[0, Math.PI / 6, 0]}>
-          {/* Metal USB Case */}
-          <mesh position={[0, 0.02, 0]} castShadow>
-            <boxGeometry args={[0.08, 0.04, 0.22]} />
-            <meshStandardMaterial color="#1a0f2b" metalness={0.9} roughness={0.15} />
+          {/* Silver plug connector */}
+          <mesh position={[0, 0.02, -0.11]}>
+            <boxGeometry args={[0.06, 0.02, 0.06]} />
+            <meshStandardMaterial color="#cccccc" metalness={0.95} roughness={0.15} />
           </mesh>
-          {/* Gold plug tip */}
-          <mesh position={[0, 0.02, -0.12]}>
-            <boxGeometry args={[0.06, 0.02, 0.04]} />
-            <meshStandardMaterial color="#d4af37" metalness={0.9} />
+          {/* SanDisk main body - black matte plastic */}
+          <mesh position={[0, 0.02, -0.02]} castShadow>
+            <boxGeometry args={[0.08, 0.035, 0.14]} />
+            <meshStandardMaterial color="#121212" roughness={0.65} metalness={0.15} />
           </mesh>
-          {/* Pulsing indicator bulb (Green) */}
-          <mesh position={[0, 0.042, 0.05]}>
+          {/* SanDisk red middle grip stripe */}
+          <mesh position={[0, 0.02, -0.01]}>
+            <boxGeometry args={[0.082, 0.038, 0.015]} />
+            <meshStandardMaterial color="#e61c24" roughness={0.4} />
+          </mesh>
+          {/* SanDisk red loop/tail connector hook */}
+          <mesh position={[0, 0.02, 0.07]} castShadow>
+            <boxGeometry args={[0.08, 0.035, 0.08]} />
+            <meshStandardMaterial color="#e61c24" roughness={0.4} />
+          </mesh>
+          {/* Pulsing indicator bulb (Red) */}
+          <mesh position={[0, 0.04, 0.04]}>
             <sphereGeometry args={[0.012, 16, 16]} />
-            <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={0.8} />
+            <meshStandardMaterial color="#ff3b30" emissive="#ff3b30" emissiveIntensity={1.5} />
           </mesh>
           
-          {/* Holographic glowing rings above the USB (Green/Purple) */}
+          {/* Holographic glowing rings above the USB (Red) */}
           <mesh ref={usbHoloRef} position={[0, 0.15, 0]}>
             <torusGeometry args={[0.18, 0.008, 8, 24]} />
             <meshBasicMaterial 
-              color="#39ff14" 
+              color="#e61c24" 
               wireframe
               transparent 
-              opacity={0.7} 
+              opacity={0.75} 
             />
           </mesh>
         </group>
@@ -298,28 +413,33 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
         </group>
       </InteractiveObject>
 
-      {/* 7. SMARTPHONE (CONTACT LINKS) */}
+      {/* 7. SMARTPHONE (CONTACT LINKS - IPHONE STYLE) */}
       <InteractiveObject 
         onClick={() => onNavigate('phone')} 
         activeView={activeView}
         targetView="phone"
-        glowColor="#39ff14"
+        glowColor="#007aff"
       >
         <group position={[-0.75, 0.8, 0.72]} rotation={[0, Math.PI / 10, 0]}>
-          {/* Matte phone frame */}
+          {/* Titanium Silver iPhone Bezel */}
           <mesh position={[0, 0.01, 0]} castShadow>
             <boxGeometry args={[0.18, 0.02, 0.34]} />
-            <meshStandardMaterial color="#0a0512" metalness={0.9} roughness={0.15} />
+            <meshStandardMaterial color="#d1d5db" metalness={0.9} roughness={0.15} />
           </mesh>
-          {/* Screen with purple-green gradient emission */}
+          {/* Glass display screen */}
           <mesh ref={phoneGlowRef} position={[0, 0.021, 0]}>
             <boxGeometry args={[0.17, 0.002, 0.33]} />
             <meshStandardMaterial 
-              color="#0d041a" 
-              emissive="#b100e8" 
-              emissiveIntensity={0.5} 
-              roughness={0.1} 
+              color="#0c0c0e" 
+              emissive="#0055ff" 
+              emissiveIntensity={0.3} 
+              roughness={0.08} 
             />
+          </mesh>
+          {/* Dynamic Island pill notch */}
+          <mesh position={[0, 0.0225, -0.11]}>
+            <boxGeometry args={[0.045, 0.003, 0.014]} />
+            <meshStandardMaterial color="#020202" roughness={0.9} />
           </mesh>
         </group>
       </InteractiveObject>

@@ -2,23 +2,27 @@ import React, { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Line } from '@react-three/drei';
 import * as THREE from 'three';
+import type { ViewState } from '../types';
+import InteractiveObject from './InteractiveObject';
 
 interface EnvironmentDetailsProps {
   lampOn: boolean;
   setLampOn: (on: boolean) => void;
-  activeView: string;
+  activeView: ViewState;
+  onNavigate: (view: ViewState) => void;
 }
 
 // -------------------------------------------------------------
 // PHYSICALLY INTERACTIVE / DRAGGABLE ITEM (COKE CAN & SNACKS)
 // -------------------------------------------------------------
 interface DraggableItemProps {
-  type: 'can' | 'snack';
+  type: 'can' | 'snack' | 'plant';
   initialPosition: [number, number, number];
   color: string;
   fridgeOpen: boolean;
   labelColor?: string;
   scale?: [number, number, number];
+  brand?: 'coke' | 'sprite' | '100plus' | 'water' | 'orange';
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({
@@ -27,12 +31,17 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   color,
   fridgeOpen,
   labelColor = '#ffffff',
-  scale = [1, 1, 1]
+  scale = [1, 1, 1],
+  brand
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isThrown, setIsThrown] = useState(false);
   const velocityRef = useRef<[number, number, number]>([0, 0, 0]);
+
+  // Plant wiggling states
+  const plantRef = useRef<THREE.Group>(null);
+  const [plantRustleTime, setPlantRustleTime] = useState(0);
 
   useFrame((state) => {
     if (!groupRef.current) return;
@@ -58,10 +67,16 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetPos.y, 0.3);
       groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetPos.z, 0.3);
 
-      // Boundary clamp inside room
-      groupRef.current.position.x = THREE.MathUtils.clamp(groupRef.current.position.x, -4.5, 4.5);
-      groupRef.current.position.y = THREE.MathUtils.clamp(groupRef.current.position.y, 0.06, 3.5);
-      groupRef.current.position.z = THREE.MathUtils.clamp(groupRef.current.position.z, -0.9, 4.5);
+      // Boundary clamp inside room (slightly smaller room boundaries for large plant)
+      const maxX = type === 'plant' ? 4.2 : 4.5;
+      const minX = type === 'plant' ? -4.2 : -4.5;
+      const maxZ = type === 'plant' ? 4.2 : 4.5;
+      const minZ = type === 'plant' ? -0.5 : -0.9;
+      const minY = type === 'plant' ? 0.4 : 0.06;
+
+      groupRef.current.position.x = THREE.MathUtils.clamp(groupRef.current.position.x, minX, maxX);
+      groupRef.current.position.y = THREE.MathUtils.clamp(groupRef.current.position.y, minY, 3.5);
+      groupRef.current.position.z = THREE.MathUtils.clamp(groupRef.current.position.z, minZ, maxZ);
 
       // Track momentum velocity
       velocityRef.current = [deltaX * 0.5, deltaY * 0.5, deltaZ * 0.5];
@@ -77,12 +92,20 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       let newY = groupRef.current.position.y + velocityRef.current[1];
       let newZ = groupRef.current.position.z + velocityRef.current[2];
 
-      // Floor bounce check (floor height y = 0.06)
-      if (newY <= 0.06) {
-        newY = 0.06;
-        velocityRef.current[1] = -velocityRef.current[1] * 0.55; // bounce elasticity
+      const floorHeight = type === 'plant' ? 0.4 : 0.06;
+      const bounceElasticity = type === 'plant' ? 0.35 : 0.55; // Plant pot is heavy, less bouncy
+
+      // Floor bounce check
+      if (newY <= floorHeight) {
+        newY = floorHeight;
+        velocityRef.current[1] = -velocityRef.current[1] * bounceElasticity; // bounce elasticity
         velocityRef.current[0] *= 0.65; // floor friction
         velocityRef.current[2] *= 0.65;
+
+        // Rustle leaves on impact!
+        if (type === 'plant') {
+          setPlantRustleTime(Date.now() / 1000);
+        }
       }
 
       // Ceiling bounce
@@ -92,36 +115,56 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       }
 
       // Left/Right Walls bounce
-      if (newX <= -4.8) {
-        newX = -4.8;
+      const wallLimitX = type === 'plant' ? 4.4 : 4.8;
+      if (newX <= -wallLimitX) {
+        newX = -wallLimitX;
         velocityRef.current[0] = -velocityRef.current[0] * 0.55;
-      } else if (newX >= 4.8) {
-        newX = 4.8;
+      } else if (newX >= wallLimitX) {
+        newX = wallLimitX;
         velocityRef.current[0] = -velocityRef.current[0] * 0.55;
       }
 
       // Back/Front Walls bounce
-      if (newZ <= -0.95) {
-        newZ = -0.95;
+      const minLimitZ = type === 'plant' ? -0.7 : -0.95;
+      const maxLimitZ = type === 'plant' ? 4.5 : 4.85;
+      if (newZ <= minLimitZ) {
+        newZ = minLimitZ;
         velocityRef.current[2] = -velocityRef.current[2] * 0.55;
-      } else if (newZ >= 4.85) {
-        newZ = 4.85;
+      } else if (newZ >= maxLimitZ) {
+        newZ = maxLimitZ;
         velocityRef.current[2] = -velocityRef.current[2] * 0.55;
       }
 
       groupRef.current.position.set(newX, newY, newZ);
     }
+
+    // Animate plant wiggling/rustling
+    if (type === 'plant' && plantRef.current && plantRustleTime > 0) {
+      const elapsed = (Date.now() / 1000) - plantRustleTime;
+      if (elapsed < 1.0) {
+        plantRef.current.rotation.y = Math.sin(elapsed * 20) * 0.16 * (1.0 - elapsed);
+        plantRef.current.rotation.x = Math.sin(elapsed * 12) * 0.05 * (1.0 - elapsed);
+      } else {
+        plantRef.current.rotation.y = 0;
+        plantRef.current.rotation.x = 0;
+      }
+    }
   });
 
   const handlePointerDown = (e: any) => {
-    // Can only grab if the fridge is open OR if it is already out of the fridge
-    if (!fridgeOpen && !isThrown) return;
+    // Can grab soda/snacks only if fridge is open OR already thrown. Plant is always grabbable!
+    if (type !== 'plant' && !fridgeOpen && !isThrown) return;
     
     e.stopPropagation();
     setIsDragging(true);
     setIsThrown(false);
     (window as any).isDraggingDraggableItem = true;
     document.body.style.cursor = 'grabbing';
+
+    // Rustle leaves when grabbed!
+    if (type === 'plant') {
+      setPlantRustleTime(Date.now() / 1000);
+    }
   };
 
   const handlePointerUp = (e: any) => {
@@ -134,7 +177,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   };
 
   const handlePointerOver = (e: any) => {
-    if (fridgeOpen || isThrown) {
+    if (type === 'plant' || fridgeOpen || isThrown) {
       e.stopPropagation();
       document.body.style.cursor = 'grab';
     }
@@ -154,18 +197,122 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       onPointerOut={handlePointerOut}
       scale={scale}
     >
-      {type === 'can' ? (
+      {type === 'plant' ? (
+        <group>
+          {/* Ceramic Clay Pot (Medium size) */}
+          <mesh castShadow>
+            <cylinderGeometry args={[0.26, 0.18, 0.45, 12]} />
+            <meshStandardMaterial color="#8e533d" roughness={0.8} />
+          </mesh>
+          {/* Soil */}
+          <mesh position={[0, 0.21, 0]}>
+            <cylinderGeometry args={[0.25, 0.25, 0.02, 12]} />
+            <meshStandardMaterial color="#3d2314" roughness={0.9} />
+          </mesh>
+          {/* Palm Leaves group (Click/hover to rustle) */}
+          <group 
+            ref={plantRef}
+            position={[0, 0.24, 0]}
+          >
+            <mesh rotation={[0.35, 0, 0.1]} castShadow>
+              <boxGeometry args={[0.06, 0.9, 0.15]} />
+              <meshStandardMaterial color="#1a6321" roughness={0.75} />
+            </mesh>
+            <mesh rotation={[-0.35, Math.PI / 3, -0.1]} castShadow>
+              <boxGeometry args={[0.06, 0.9, 0.15]} />
+              <meshStandardMaterial color="#1a6321" roughness={0.75} />
+            </mesh>
+            <mesh rotation={[0.2, -Math.PI / 3, 0.2]} castShadow>
+              <boxGeometry args={[0.06, 0.9, 0.15]} />
+              <meshStandardMaterial color="#1a6321" roughness={0.75} />
+            </mesh>
+            <mesh rotation={[-0.3, -Math.PI / 1.5, -0.15]} castShadow>
+              <boxGeometry args={[0.05, 0.75, 0.12]} />
+              <meshStandardMaterial color="#217929" roughness={0.75} />
+            </mesh>
+            <mesh rotation={[0.3, Math.PI / 1.5, 0.15]} castShadow>
+              <boxGeometry args={[0.05, 0.75, 0.12]} />
+              <meshStandardMaterial color="#217929" roughness={0.75} />
+            </mesh>
+            {/* Extra leaves for lush volume */}
+            <mesh rotation={[0.1, Math.PI, -0.2]} castShadow>
+              <boxGeometry args={[0.06, 0.85, 0.14]} />
+              <meshStandardMaterial color="#1b6c23" roughness={0.75} />
+            </mesh>
+            <mesh rotation={[-0.15, -Math.PI / 6, 0.25]} castShadow>
+              <boxGeometry args={[0.05, 0.8, 0.13]} />
+              <meshStandardMaterial color="#25842d" roughness={0.75} />
+            </mesh>
+          </group>
+        </group>
+      ) : type === 'can' ? (
         <group>
           {/* Main Soda Can Cylinder */}
           <mesh castShadow>
             <cylinderGeometry args={[0.035, 0.035, 0.1, 12]} />
-            <meshStandardMaterial color={color} roughness={0.35} metalness={0.8} />
+            <meshStandardMaterial 
+              color={
+                brand === 'coke' ? '#cc1111' :
+                brand === 'sprite' ? '#008a00' :
+                brand === '100plus' ? '#f0f0f0' :
+                brand === 'water' ? '#a5d6a7' :
+                brand === 'orange' ? '#ff6d00' :
+                color
+              } 
+              roughness={brand === 'water' ? 0.1 : 0.35} 
+              metalness={brand === 'water' ? 0.9 : 0.8}
+              transparent={brand === 'water'}
+              opacity={brand === 'water' ? 0.7 : 1}
+            />
           </mesh>
           {/* Label ring */}
-          <mesh position={[0, 0, 0.001]}>
-            <cylinderGeometry args={[0.036, 0.036, 0.04, 12]} />
-            <meshStandardMaterial color={labelColor} roughness={0.4} />
+          <mesh position={[0, 0, 0]}>
+            <cylinderGeometry args={[0.036, 0.036, 0.05, 12]} />
+            <meshStandardMaterial 
+              color={
+                brand === 'coke' ? '#ffffff' :
+                brand === 'sprite' ? '#ffea00' :
+                brand === '100plus' ? '#0d47a1' :
+                brand === 'water' ? '#29b6f6' :
+                brand === 'orange' ? '#3f51b5' :
+                labelColor
+              } 
+              roughness={0.4} 
+              transparent={brand === 'water'}
+              opacity={brand === 'water' ? 0.9 : 1}
+            />
           </mesh>
+          {/* Coca-Cola ribbon decal */}
+          {brand === 'coke' && (
+            <mesh position={[0, 0, 0.001]}>
+              <cylinderGeometry args={[0.0365, 0.0365, 0.02, 12]} />
+              <meshBasicMaterial color="#cc1111" />
+            </mesh>
+          )}
+          {brand === '100plus' && (
+            <group>
+              <mesh position={[0, 0.015, 0.001]}>
+                <cylinderGeometry args={[0.0365, 0.0365, 0.006, 12]} />
+                <meshBasicMaterial color="#ff6d00" />
+              </mesh>
+              <mesh position={[0, -0.015, 0.001]}>
+                <cylinderGeometry args={[0.0365, 0.0365, 0.006, 12]} />
+                <meshBasicMaterial color="#00e676" />
+              </mesh>
+            </group>
+          )}
+          {brand === 'sprite' && (
+            <mesh position={[0, 0, 0.001]}>
+              <cylinderGeometry args={[0.0365, 0.0365, 0.015, 12]} />
+              <meshBasicMaterial color="#0288d1" />
+            </mesh>
+          )}
+          {brand === 'water' && (
+            <mesh position={[0, -0.01, 0]}>
+              <cylinderGeometry args={[0.033, 0.033, 0.07, 10]} />
+              <meshStandardMaterial color="#e0f7fa" transparent opacity={0.6} roughness={0.1} />
+            </mesh>
+          )}
         </group>
       ) : (
         /* Snack Box */
@@ -184,13 +331,12 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
 export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
   lampOn,
   setLampOn,
-  activeView
+  activeView,
+  onNavigate
 }) => {
   const [lampHovered, setLampHovered] = useState(false);
   const [serverHovered, setServerHovered] = useState(false);
   const [fridgeOpen, setFridgeOpen] = useState(false);
-  const [plantRustleTime, setPlantRustleTime] = useState(0);
-  const plantRef = useRef<THREE.Group>(null);
   const serverLEDsRef = useRef<THREE.Group>(null);
   const pcFansRef = useRef<THREE.Group>(null);
 
@@ -216,19 +362,6 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
       pcFansRef.current.children.forEach((fanGroup) => {
         fanGroup.rotation.z = time * 8; // Fast spin
       });
-    }
-
-    // 3. Plant Leaves Rustle
-    if (plantRef.current && plantRustleTime > 0) {
-      const elapsed = (Date.now() / 1000) - plantRustleTime;
-      if (elapsed < 1.0) {
-        // Decay oscillating angle back to rest
-        plantRef.current.rotation.y = Math.sin(elapsed * 20) * 0.16 * (1.0 - elapsed);
-        plantRef.current.rotation.x = Math.sin(elapsed * 12) * 0.05 * (1.0 - elapsed);
-      } else {
-        plantRef.current.rotation.y = 0;
-        plantRef.current.rotation.x = 0;
-      }
     }
   });
 
@@ -300,6 +433,84 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
         <meshStandardMaterial color="#484b54" roughness={0.85} />
       </mesh>
 
+      {/* FUTURISTIC SLIDING DOOR (EMPTY LEFT WALL) */}
+      <group position={[-4.94, 1.15, 3.8]} rotation={[0, Math.PI / 2, 0]}>
+        {/* Outer door frame (Grey Metal) */}
+        <mesh castShadow>
+          <boxGeometry args={[1.1, 2.3, 0.08]} />
+          <meshStandardMaterial color="#4b5563" roughness={0.5} metalness={0.7} />
+        </mesh>
+
+        {/* Door Frame Neon Green Light Borders */}
+        {/* Left Glow Border */}
+        <mesh position={[-0.56, 0, 0.04]}>
+          <boxGeometry args={[0.02, 2.3, 0.02]} />
+          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={2.5} />
+        </mesh>
+        {/* Right Glow Border */}
+        <mesh position={[0.56, 0, 0.04]}>
+          <boxGeometry args={[0.02, 2.3, 0.02]} />
+          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={2.5} />
+        </mesh>
+        {/* Top Glow Border */}
+        <mesh position={[0, 1.16, 0.04]}>
+          <boxGeometry args={[1.14, 0.02, 0.02]} />
+          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={2.5} />
+        </mesh>
+
+        {/* Sliding door panel (Grey brushed steel) */}
+        <mesh position={[0, 0, 0.02]} castShadow>
+          <boxGeometry args={[0.96, 2.2, 0.03]} />
+          <meshStandardMaterial color="#6b7280" roughness={0.25} metalness={0.95} />
+        </mesh>
+
+        {/* Sleek Vertical Metal Door Handle */}
+        {/* Handle Top Post */}
+        <mesh position={[-0.32, 0.3, 0.045]}>
+          <boxGeometry args={[0.03, 0.015, 0.035]} />
+          <meshStandardMaterial color="#cccccc" metalness={0.9} roughness={0.1} />
+        </mesh>
+        {/* Handle Bottom Post */}
+        <mesh position={[-0.32, -0.3, 0.045]}>
+          <boxGeometry args={[0.03, 0.015, 0.035]} />
+          <meshStandardMaterial color="#cccccc" metalness={0.9} roughness={0.1} />
+        </mesh>
+        {/* Handle Grab Bar (Vertical cylindrical metal bar) */}
+        <mesh position={[-0.32, 0, 0.065]} castShadow>
+          <cylinderGeometry args={[0.012, 0.012, 0.65, 8]} />
+          <meshStandardMaterial color="#cccccc" metalness={0.95} roughness={0.1} />
+        </mesh>
+
+        {/* Glowing seam lines on the door (Neon Green to match the frame) */}
+        <mesh position={[0, 0, 0.036]}>
+          <boxGeometry args={[0.015, 2.2, 0.005]} />
+          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={2.0} />
+        </mesh>
+        <mesh position={[0, 0.3, 0.036]} rotation={[0, 0, Math.PI / 2]}>
+          <boxGeometry args={[0.015, 0.4, 0.005]} />
+          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={2.0} />
+        </mesh>
+
+        {/* Security keycard access reader panel beside the door */}
+        <group position={[0.62, 0.05, 0.03]}>
+          {/* Reader base */}
+          <mesh castShadow>
+            <boxGeometry args={[0.06, 0.16, 0.02]} />
+            <meshStandardMaterial color="#1a122e" roughness={0.5} />
+          </mesh>
+          {/* Glowing scanner slot */}
+          <mesh position={[0, 0.04, 0.011]}>
+            <boxGeometry args={[0.04, 0.03, 0.005]} />
+            <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={4} />
+          </mesh>
+          {/* Keypad dots grid */}
+          <mesh position={[0, -0.03, 0.011]}>
+            <boxGeometry args={[0.03, 0.06, 0.005]} />
+            <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={2} />
+          </mesh>
+        </group>
+      </group>
+
       {/* Concrete Grey Front Wall (Enclosing the 360 view room) */}
       <mesh position={[0, 2.0, 5.0]} rotation={[0, Math.PI, 0]} receiveShadow>
         <boxGeometry args={[10, 4.0, 0.1]} />
@@ -319,6 +530,31 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
         <cylinderGeometry args={[0.02, 0.02, 3.5, 8]} />
         <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={5} />
       </mesh>
+
+      {/* Modern Minimalist Pendant Hanging Light over the Desk */}
+      <group position={[0, 3.9, 0.2]}>
+        {/* Dual hanging wires */}
+        <mesh position={[-0.4, -0.65, 0]}>
+          <cylinderGeometry args={[0.003, 0.003, 1.3, 8]} />
+          <meshStandardMaterial color="#111111" roughness={0.5} />
+        </mesh>
+        <mesh position={[0.4, -0.65, 0]}>
+          <cylinderGeometry args={[0.003, 0.003, 1.3, 8]} />
+          <meshStandardMaterial color="#111111" roughness={0.5} />
+        </mesh>
+        {/* Sleek horizontal light bar chassis */}
+        <mesh position={[0, -1.3, 0]} castShadow>
+          <boxGeometry args={[1.4, 0.03, 0.08]} />
+          <meshStandardMaterial color="#202228" roughness={0.3} metalness={0.7} />
+        </mesh>
+        {/* Glowing LED emission panel */}
+        <mesh position={[0, -1.316, 0]}>
+          <boxGeometry args={[1.38, 0.008, 0.07]} />
+          <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={8} />
+        </mesh>
+        {/* Dedicated Point Light casting light onto the desk */}
+        <pointLight position={[0, -1.4, 0]} color="#ffffff" intensity={3.5} distance={6} decay={1.5} />
+      </group>
 
       {/* Bright Ceiling Spotlights casting downwards to illuminate the room */}
       <pointLight position={[-3, 3.8, 1]} color="#ffffff" intensity={2.8} distance={7} decay={1.3} />
@@ -439,67 +675,137 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
       {/* ========================================== */}
       {/*   2. COHESIVE CYBER ERGONOMIC GAMING CHAIR */}
       {/* ========================================== */}
-      <group position={[0, 0, 1.52]} rotation={[0, 0, 0]}>
-        {/* 5 Wheel Legs Spokes */}
-        {[0, 1, 2, 3, 4].map((i) => {
-          const angle = (i * Math.PI * 2) / 5;
-          return (
-            <mesh key={i} position={[Math.sin(angle) * 0.15, 0.04, Math.cos(angle) * 0.15]} rotation={[0, angle, Math.PI / 2]} castShadow>
-              <cylinderGeometry args={[0.015, 0.015, 0.3]} />
-              <meshStandardMaterial color="#0c0715" roughness={0.4} />
-            </mesh>
-          );
-        })}
-        {/* Hydraulic Cylinder */}
-        <mesh position={[0, 0.2, 0]} castShadow>
-          <cylinderGeometry args={[0.035, 0.035, 0.32]} />
-          <meshStandardMaterial color="#2d2d3a" metalness={0.9} roughness={0.1} />
-        </mesh>
-        {/* Seat Cushion */}
-        <mesh position={[0, 0.38, 0]} castShadow>
-          <boxGeometry args={[0.55, 0.08, 0.52]} />
-          <meshStandardMaterial color="#100720" roughness={0.7} />
-        </mesh>
-        {/* Contoured Backrest */}
-        <mesh position={[0, 0.8, 0.2]} rotation={[0.08, 0, 0]} castShadow>
-          <boxGeometry args={[0.48, 0.72, 0.06]} />
-          <meshStandardMaterial color="#12092b" roughness={0.8} />
-        </mesh>
-        {/* Backrest connecting bar */}
-        <mesh position={[0, 0.58, 0.22]} rotation={[0.08, 0, 0]} castShadow>
-          <boxGeometry args={[0.08, 0.42, 0.03]} />
-          <meshStandardMaterial color="#1c142c" metalness={0.8} roughness={0.3} />
-        </mesh>
-        {/* Armrest Left Support */}
-        <mesh position={[-0.28, 0.49, 0.05]} castShadow>
-          <boxGeometry args={[0.03, 0.22, 0.03]} />
-          <meshStandardMaterial color="#1c142c" roughness={0.5} />
-        </mesh>
-        {/* Armrest Left Pad */}
-        <mesh position={[-0.28, 0.6, 0.05]} castShadow>
-          <boxGeometry args={[0.06, 0.03, 0.26]} />
-          <meshStandardMaterial color="#0b0616" roughness={0.6} />
-        </mesh>
-        {/* Armrest Right Support */}
-        <mesh position={[0.28, 0.49, 0.05]} castShadow>
-          <boxGeometry args={[0.03, 0.22, 0.03]} />
-          <meshStandardMaterial color="#1c142c" roughness={0.5} />
-        </mesh>
-        {/* Armrest Right Pad */}
-        <mesh position={[0.28, 0.6, 0.05]} castShadow>
-          <boxGeometry args={[0.06, 0.03, 0.26]} />
-          <meshStandardMaterial color="#0b0616" roughness={0.6} />
-        </mesh>
-        {/* Chair RGB lights */}
-        <mesh position={[-0.25, 0.8, 0.23]} rotation={[0.08, 0, 0]}>
-          <boxGeometry args={[0.02, 0.65, 0.02]} />
-          <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={2.5} />
-        </mesh>
-        <mesh position={[0.25, 0.8, 0.23]} rotation={[0.08, 0, 0]}>
-          <boxGeometry args={[0.02, 0.65, 0.02]} />
-          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={2.5} />
-        </mesh>
-      </group>
+      <InteractiveObject
+        onClick={() => onNavigate('chair')}
+        activeView={activeView}
+        targetView="chair"
+        glowColor="#22c55e"
+      >
+        <group position={[0, 0, 1.52]} rotation={[0, 0, 0]}>
+          {/* 5 Wheel Legs Spokes */}
+          {[0, 1, 2, 3, 4].map((i) => {
+            const angle = (i * Math.PI * 2) / 5;
+            return (
+              <mesh key={i} position={[Math.sin(angle) * 0.15, 0.04, Math.cos(angle) * 0.15]} rotation={[0, angle, Math.PI / 2]} castShadow>
+                <cylinderGeometry args={[0.015, 0.015, 0.3]} />
+                <meshStandardMaterial color="#1a1a24" roughness={0.4} />
+              </mesh>
+            );
+          })}
+          {/* Hydraulic Cylinder */}
+          <mesh position={[0, 0.2, 0]} castShadow>
+            <cylinderGeometry args={[0.035, 0.035, 0.32]} />
+            <meshStandardMaterial color="#2d2d3a" metalness={0.9} roughness={0.1} />
+          </mesh>
+
+          {/* Seat Base Plate */}
+          <mesh position={[0, 0.35, 0]} castShadow>
+            <boxGeometry args={[0.5, 0.04, 0.48]} />
+            <meshStandardMaterial color="#111115" metalness={0.5} roughness={0.5} />
+          </mesh>
+
+          {/* Seat Cushion (Purple Center) */}
+          <mesh position={[0, 0.39, 0]} castShadow>
+            <boxGeometry args={[0.42, 0.06, 0.46]} />
+            <meshStandardMaterial color="#6d28d9" roughness={0.7} />
+          </mesh>
+
+          {/* Seat Left Bolster Wing (Green Accent) */}
+          <mesh position={[-0.23, 0.42, 0]} rotation={[0, 0, Math.PI / 12]} castShadow>
+            <boxGeometry args={[0.08, 0.08, 0.46]} />
+            <meshStandardMaterial color="#22c55e" roughness={0.6} />
+          </mesh>
+
+          {/* Seat Right Bolster Wing (Green Accent) */}
+          <mesh position={[0.23, 0.42, 0]} rotation={[0, 0, -Math.PI / 12]} castShadow>
+            <boxGeometry args={[0.08, 0.08, 0.46]} />
+            <meshStandardMaterial color="#22c55e" roughness={0.6} />
+          </mesh>
+
+          {/* Contoured Backrest (Main Purple Panel) */}
+          <mesh position={[0, 0.82, 0.2]} rotation={[0.08, 0, 0]} castShadow>
+            <boxGeometry args={[0.38, 0.74, 0.06]} />
+            <meshStandardMaterial color="#5b21b6" roughness={0.8} />
+          </mesh>
+
+          {/* Backrest Left Wing Bolster (Green Accent) */}
+          <mesh position={[-0.21, 0.82, 0.16]} rotation={[0.08, -Math.PI / 10, 0.04]} castShadow>
+            <boxGeometry args={[0.07, 0.68, 0.08]} />
+            <meshStandardMaterial color="#22c55e" roughness={0.7} />
+          </mesh>
+
+          {/* Backrest Right Wing Bolster (Green Accent) */}
+          <mesh position={[0.21, 0.82, 0.16]} rotation={[0.08, Math.PI / 10, -0.04]} castShadow>
+            <boxGeometry args={[0.07, 0.68, 0.08]} />
+            <meshStandardMaterial color="#22c55e" roughness={0.7} />
+          </mesh>
+
+          {/* Harness Pass-through Bezel (Black accent plastic) */}
+          <mesh position={[0, 1.05, 0.22]} rotation={[0.08, 0, 0]}>
+            <boxGeometry args={[0.22, 0.06, 0.04]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.5} />
+          </mesh>
+          {/* Harness Twin Holes */}
+          <mesh position={[-0.06, 1.05, 0.24]} rotation={[0.08, 0, 0]}>
+            <boxGeometry args={[0.06, 0.03, 0.02]} />
+            <meshStandardMaterial color="#020205" roughness={0.9} />
+          </mesh>
+          <mesh position={[0.06, 1.05, 0.24]} rotation={[0.08, 0, 0]}>
+            <boxGeometry args={[0.06, 0.03, 0.02]} />
+            <meshStandardMaterial color="#020205" roughness={0.9} />
+          </mesh>
+
+          {/* Headrest Pillow (Green Accent) */}
+          <mesh position={[0, 1.16, 0.23]} rotation={[0.06, 0, 0]} castShadow>
+            <boxGeometry args={[0.26, 0.14, 0.06]} />
+            <meshStandardMaterial color="#22c55e" roughness={0.6} />
+          </mesh>
+
+          {/* Lumbar Support Pillow (Green Accent) */}
+          <mesh position={[0, 0.54, 0.17]} rotation={[0.08, 0, 0]} castShadow>
+            <boxGeometry args={[0.28, 0.16, 0.05]} />
+            <meshStandardMaterial color="#22c55e" roughness={0.6} />
+          </mesh>
+
+          {/* Backrest connecting bar */}
+          <mesh position={[0, 0.58, 0.22]} rotation={[0.08, 0, 0]} castShadow>
+            <boxGeometry args={[0.08, 0.42, 0.03]} />
+            <meshStandardMaterial color="#1a1a24" metalness={0.8} roughness={0.3} />
+          </mesh>
+
+          {/* Armrest Left Support */}
+          <mesh position={[-0.28, 0.49, 0.05]} castShadow>
+            <boxGeometry args={[0.03, 0.22, 0.03]} />
+            <meshStandardMaterial color="#1a1a24" roughness={0.5} />
+          </mesh>
+          {/* Armrest Left Pad (Purple Top) */}
+          <mesh position={[-0.28, 0.6, 0.05]} castShadow>
+            <boxGeometry args={[0.07, 0.035, 0.26]} />
+            <meshStandardMaterial color="#5b21b6" roughness={0.6} />
+          </mesh>
+
+          {/* Armrest Right Support */}
+          <mesh position={[0.28, 0.49, 0.05]} castShadow>
+            <boxGeometry args={[0.03, 0.22, 0.03]} />
+            <meshStandardMaterial color="#1a1a24" roughness={0.5} />
+          </mesh>
+          {/* Armrest Right Pad (Purple Top) */}
+          <mesh position={[0.28, 0.6, 0.05]} castShadow>
+            <boxGeometry args={[0.07, 0.035, 0.26]} />
+            <meshStandardMaterial color="#5b21b6" roughness={0.6} />
+          </mesh>
+
+          {/* Chair Neon Glow Tubes */}
+          <mesh position={[-0.25, 0.82, 0.22]} rotation={[0.08, 0, 0]}>
+            <boxGeometry args={[0.015, 0.65, 0.015]} />
+            <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={2.0} />
+          </mesh>
+          <mesh position={[0.25, 0.82, 0.22]} rotation={[0.08, 0, 0]}>
+            <boxGeometry args={[0.015, 0.65, 0.015]} />
+            <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={2.0} />
+          </mesh>
+        </group>
+      </InteractiveObject>
 
       {/* ========================================== */}
       {/*   3. TABLE LAMP (WITH TOGGLE SWITCH)       */}
@@ -717,55 +1023,162 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
       {/* ========================================== */}
       {/*   9. HIGH-END DESKTOP GAMING PC CASE       */}
       {/* ========================================== */}
-      <group position={[2.0, 1.05, -0.22]} rotation={[0, -Math.PI / 6, 0]}>
+      <group position={[2.0, 1.14, -0.22]} rotation={[0, -Math.PI / 6, 0]}>
+        {/* Matte Black Metal PC Case Chassis - Larger dimensions */}
         <mesh castShadow receiveShadow>
-          <boxGeometry args={[0.26, 0.52, 0.44]} />
+          <boxGeometry args={[0.36, 0.68, 0.56]} />
           <meshStandardMaterial color="#080312" roughness={0.15} metalness={0.95} />
         </mesh>
-        <mesh position={[-0.132, 0, 0]}>
-          <boxGeometry args={[0.005, 0.46, 0.38]} />
-          <meshStandardMaterial color="#b100e8" transparent opacity={0.32} roughness={0.05} metalness={0.9} />
-        </mesh>
-        <pointLight position={[0, 0.05, 0]} color="#b100e8" intensity={1.8} distance={1.8} />
-        <pointLight position={[0, -0.15, 0.05]} color="#39ff14" intensity={1.4} distance={1.5} />
 
-        <mesh position={[0, 0.08, -0.05]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.05, 0.05, 0.03, 16]} />
-          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={3.5} />
+        {/* Tempered Glass Side Window panel (Left side) */}
+        <mesh position={[-0.182, 0, 0]}>
+          <boxGeometry args={[0.005, 0.62, 0.50]} />
+          <meshStandardMaterial color="#b100e8" transparent opacity={0.25} roughness={0.02} metalness={0.95} />
         </mesh>
-        <mesh position={[0.02, 0.1, 0.08]}>
-          <boxGeometry args={[0.01, 0.09, 0.014]} />
+
+        {/* Ambient case lighting inside */}
+        <pointLight position={[0, 0.1, 0.05]} color="#b100e8" intensity={2.5} distance={2.5} />
+        <pointLight position={[0, -0.2, -0.05]} color="#39ff14" intensity={2.0} distance={2.2} />
+
+        {/* Motherboard Backplate */}
+        <mesh position={[0.16, 0.07, 0]}>
+          <boxGeometry args={[0.02, 0.52, 0.48]} />
+          <meshStandardMaterial color="#111116" roughness={0.7} metalness={0.2} />
+        </mesh>
+
+        {/* CPU AIO Water Block (Watercooler with glowing RGB ring) */}
+        <mesh position={[0.13, 0.16, -0.06]} rotation={[0, Math.PI / 2, 0]} castShadow>
+          <cylinderGeometry args={[0.06, 0.06, 0.03, 16]} />
+          <meshStandardMaterial color="#2d2d3a" metalness={0.8} roughness={0.2} />
+        </mesh>
+        {/* Glowing CPU RGB Ring */}
+        <mesh position={[0.116, 0.16, -0.06]} rotation={[0, Math.PI / 2, 0]}>
+          <ringGeometry args={[0.04, 0.052, 32]} />
           <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={4} />
         </mesh>
-        <mesh position={[0.02, 0.1, 0.10]}>
-          <boxGeometry args={[0.01, 0.09, 0.014]} />
-          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={4} />
+        {/* Watercooling Tubes */}
+        <mesh position={[0.08, 0.16, -0.16]} rotation={[Math.PI / 4, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.008, 0.008, 0.18, 8]} />
+          <meshStandardMaterial color="#1a1a24" roughness={0.5} />
+        </mesh>
+        <mesh position={[0.08, 0.14, -0.18]} rotation={[Math.PI / 4, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.008, 0.008, 0.18, 8]} />
+          <meshStandardMaterial color="#1a1a24" roughness={0.5} />
         </mesh>
 
+        {/* Glowing RGB DDR5 RAM Sticks (Alternating green & purple) */}
+        {[0, 1, 2, 3].map((idx) => (
+          <group key={idx} position={[0.13, 0.16, 0.03 + idx * 0.022]}>
+            {/* RAM Body */}
+            <mesh>
+              <boxGeometry args={[0.015, 0.1, 0.008]} />
+              <meshStandardMaterial color="#1c1924" roughness={0.5} />
+            </mesh>
+            {/* RGB lightbar on top of RAM */}
+            <mesh position={[-0.009, 0.01, 0]}>
+              <boxGeometry args={[0.004, 0.08, 0.006]} />
+              <meshStandardMaterial 
+                color={idx % 2 === 0 ? "#39ff14" : "#b100e8"} 
+                emissive={idx % 2 === 0 ? "#39ff14" : "#b100e8"} 
+                emissiveIntensity={4.5} 
+              />
+            </mesh>
+          </group>
+        ))}
+
+        {/* HIGH-END GAMING GPU (VERTICALLY MOUNTED FOR MAX VISIBILITY) */}
+        <group position={[-0.08, -0.1, -0.02]}>
+          {/* GPU Shroud / Body */}
+          <mesh castShadow>
+            <boxGeometry args={[0.07, 0.18, 0.38]} />
+            <meshStandardMaterial color="#181822" roughness={0.4} metalness={0.8} />
+          </mesh>
+
+          {/* GPU Backplate */}
+          <mesh position={[0.036, 0, 0]} castShadow>
+            <boxGeometry args={[0.002, 0.17, 0.37]} />
+            <meshStandardMaterial color="#2d2d3a" roughness={0.3} metalness={0.9} />
+          </mesh>
+
+          {/* GPU Fans (Glow Hubs) */}
+          {/* Fan 1 */}
+          <mesh position={[-0.036, -0.01, 0.1]} rotation={[0, Math.PI / 2, 0]}>
+            <ringGeometry args={[0.032, 0.045, 16]} />
+            <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={3} />
+          </mesh>
+          {/* Fan 2 */}
+          <mesh position={[-0.036, -0.01, -0.01]} rotation={[0, Math.PI / 2, 0]}>
+            <ringGeometry args={[0.032, 0.045, 16]} />
+            <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={3} />
+          </mesh>
+          {/* Fan 3 */}
+          <mesh position={[-0.036, -0.01, -0.12]} rotation={[0, Math.PI / 2, 0]}>
+            <ringGeometry args={[0.032, 0.045, 16]} />
+            <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={3} />
+          </mesh>
+
+          {/* GPU RGB Side Lightbar (Vivid Green Strip) */}
+          <mesh position={[-0.036, 0.072, 0]} castShadow>
+            <boxGeometry args={[0.004, 0.016, 0.34]} />
+            <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={5} />
+          </mesh>
+          {/* GPU RGB Logo badge (Vivid Purple Glow) */}
+          <mesh position={[-0.036, 0.02, 0.13]}>
+            <boxGeometry args={[0.005, 0.025, 0.06]} />
+            <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={5} />
+          </mesh>
+
+          {/* GPU Power Cable Extensions (Sleeved cables) */}
+          <mesh position={[0.02, 0.09, 0.06]} rotation={[0, 0, Math.PI / 4]}>
+            <boxGeometry args={[0.04, 0.01, 0.03]} />
+            <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={1} />
+          </mesh>
+          <mesh position={[0.02, 0.09, 0.08]} rotation={[0, 0, Math.PI / 4]}>
+            <boxGeometry args={[0.04, 0.01, 0.03]} />
+            <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={1} />
+          </mesh>
+        </group>
+
+        {/* Case Fan Systems (Animate rotation) */}
         <group ref={pcFansRef}>
-          <group position={[0, 0.14, 0.222]}>
+          {/* Front Fan 1 (Top-Front) */}
+          <group position={[0, 0.22, 0.282]}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[0.045, 0.075, 16]} />
-              <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={3} transparent opacity={0.8} />
+              <ringGeometry args={[0.06, 0.09, 16]} />
+              <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={3.5} transparent opacity={0.8} />
             </mesh>
-            <Line points={[[-0.07, 0, 0], [0.07, 0, 0]]} color="#b100e8" lineWidth={2} />
-            <Line points={[[0, -0.07, 0], [0, 0.07, 0]]} color="#b100e8" lineWidth={2} />
+            <Line points={[[-0.08, 0, 0], [0.08, 0, 0]]} color="#b100e8" lineWidth={2.5} />
+            <Line points={[[0, -0.08, 0], [0, 0.08, 0]]} color="#b100e8" lineWidth={2.5} />
           </group>
-          <group position={[0, -0.1, 0.222]}>
+
+          {/* Front Fan 2 (Mid-Front) */}
+          <group position={[0, 0.02, 0.282]}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[0.045, 0.075, 16]} />
-              <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={3} transparent opacity={0.8} />
+              <ringGeometry args={[0.06, 0.09, 16]} />
+              <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={3.5} transparent opacity={0.8} />
             </mesh>
-            <Line points={[[-0.07, 0, 0], [0.07, 0, 0]]} color="#39ff14" lineWidth={2} />
-            <Line points={[[0, -0.07, 0], [0, 0.07, 0]]} color="#39ff14" lineWidth={2} />
+            <Line points={[[-0.08, 0, 0], [0.08, 0, 0]]} color="#39ff14" lineWidth={2.5} />
+            <Line points={[[0, -0.08, 0], [0, 0.08, 0]]} color="#39ff14" lineWidth={2.5} />
           </group>
-          <group position={[0, 0.12, -0.222]}>
+
+          {/* Front Fan 3 (Bottom-Front) */}
+          <group position={[0, -0.18, 0.282]}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[0.04, 0.065, 16]} />
-              <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={3} transparent opacity={0.8} />
+              <ringGeometry args={[0.06, 0.09, 16]} />
+              <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={3.5} transparent opacity={0.8} />
             </mesh>
-            <Line points={[[-0.06, 0, 0], [0.06, 0, 0]]} color="#b100e8" lineWidth={2} />
-            <Line points={[[0, -0.06, 0], [0, 0.06, 0]]} color="#b100e8" lineWidth={2} />
+            <Line points={[[-0.08, 0, 0], [0.08, 0, 0]]} color="#b100e8" lineWidth={2.5} />
+            <Line points={[[0, -0.08, 0], [0, 0.08, 0]]} color="#b100e8" lineWidth={2.5} />
+          </group>
+
+          {/* Rear Exhaust Fan */}
+          <group position={[0, 0.18, -0.282]}>
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[0.05, 0.08, 16]} />
+              <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={3.5} transparent opacity={0.8} />
+            </mesh>
+            <Line points={[[-0.07, 0, 0], [0.07, 0, 0]]} color="#39ff14" lineWidth={2.5} />
+            <Line points={[[0, -0.07, 0], [0, 0.07, 0]]} color="#39ff14" lineWidth={2.5} />
           </group>
         </group>
       </group>
@@ -826,28 +1239,80 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
       {/* ========================================== */}
       {/*   REFRIGERATOR MAIN UNIT                   */}
       {/* ========================================== */}
-      <group position={[-2.3, 0.5, -0.25]} rotation={[0, Math.PI / 4, 0]}>
-        {/* Main outer metal casing */}
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[0.5, 1.0, 0.5]} />
-          <meshStandardMaterial color="#0f0b18" roughness={0.2} metalness={0.8} />
+      <group position={[-4.65, 0.65, 0.8]} rotation={[0, Math.PI / 2, 0]}>
+        {/* Vending Machine Outer Frame: Back Wall */}
+        <mesh position={[0, 0, -0.265]} castShadow receiveShadow>
+          <boxGeometry args={[0.55, 1.26, 0.02]} />
+          <meshStandardMaterial color="#0b0716" roughness={0.4} metalness={0.9} />
+        </mesh>
+        {/* Vending Machine Outer Frame: Bottom Base */}
+        <mesh position={[0, -0.63, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.55, 0.04, 0.55]} />
+          <meshStandardMaterial color="#0b0716" roughness={0.4} metalness={0.9} />
+        </mesh>
+        {/* Vending Machine Outer Frame: Glowing Header Sign */}
+        <group position={[0, 0.59, 0]}>
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[0.55, 0.12, 0.55]} />
+            <meshStandardMaterial color="#0b0716" roughness={0.4} metalness={0.9} />
+          </mesh>
+          <mesh position={[0, 0, 0.276]}>
+            <planeGeometry args={[0.48, 0.08]} />
+            <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={3} />
+          </mesh>
+        </group>
+        {/* Vending Machine Corner Pillars */}
+        <mesh position={[-0.26, -0.02, 0.26]} castShadow>
+          <boxGeometry args={[0.03, 1.18, 0.03]} />
+          <meshStandardMaterial color="#0b0716" metalness={0.8} />
+        </mesh>
+        <mesh position={[0.26, -0.02, 0.26]} castShadow>
+          <boxGeometry args={[0.03, 1.18, 0.03]} />
+          <meshStandardMaterial color="#0b0716" metalness={0.8} />
+        </mesh>
+        <mesh position={[-0.26, -0.02, -0.26]} castShadow>
+          <boxGeometry args={[0.03, 1.18, 0.03]} />
+          <meshStandardMaterial color="#0b0716" metalness={0.8} />
+        </mesh>
+        <mesh position={[0.26, -0.02, -0.26]} castShadow>
+          <boxGeometry args={[0.03, 1.18, 0.03]} />
+          <meshStandardMaterial color="#0b0716" metalness={0.8} />
+        </mesh>
+        {/* Vending Machine Glass Side Panels */}
+        <mesh position={[-0.27, -0.02, 0]}>
+          <boxGeometry args={[0.01, 1.18, 0.51]} />
+          <meshStandardMaterial color="#00d8ff" transparent opacity={0.15} roughness={0.05} metalness={0.9} />
+        </mesh>
+        <mesh position={[0.27, -0.02, 0]}>
+          <boxGeometry args={[0.01, 1.18, 0.51]} />
+          <meshStandardMaterial color="#00d8ff" transparent opacity={0.15} roughness={0.05} metalness={0.9} />
         </mesh>
         {/* Bottom Shelf Wire */}
-        <mesh position={[0, -0.15, 0.02]}>
-          <boxGeometry args={[0.46, 0.015, 0.42]} />
+        <mesh position={[0, -0.32, 0.02]}>
+          <boxGeometry args={[0.51, 0.015, 0.48]} />
           <meshStandardMaterial color="#1a122e" roughness={0.5} />
         </mesh>
         {/* Middle Shelf Wire */}
-        <mesh position={[0, 0.2, 0.02]}>
-          <boxGeometry args={[0.46, 0.015, 0.42]} />
+        <mesh position={[0, 0.05, 0.02]}>
+          <boxGeometry args={[0.51, 0.015, 0.48]} />
           <meshStandardMaterial color="#1a122e" roughness={0.5} />
         </mesh>
+        {/* Top Shelf Wire */}
+        <mesh position={[0, 0.38, 0.02]}>
+          <boxGeometry args={[0.51, 0.015, 0.48]} />
+          <meshStandardMaterial color="#1a122e" roughness={0.5} />
+        </mesh>
+        {/* Vending Machine Vertical Interior LED Light Tube */}
+        <mesh position={[-0.24, -0.02, 0.24]}>
+          <cylinderGeometry args={[0.012, 0.012, 1.15, 8]} />
+          <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={5} />
+        </mesh>
         {/* LED Interior Backwash Light */}
-        <pointLight position={[0, 0.15, 0.1]} color="#00f0ff" intensity={2.5} distance={1.8} />
+        <pointLight position={[0, 0.1, 0.15]} color="#00f0ff" intensity={4.5} distance={2.5} decay={1.5} />
 
         {/* Swinging transparent door hinged on the side */}
         <mesh 
-          position={fridgeOpen ? [0.22, 0, 0.36] : [0, 0, 0.251]} 
+          position={fridgeOpen ? [0.26, -0.02, 0.39] : [0, -0.02, 0.275]} 
           rotation={fridgeOpen ? [0, Math.PI / 2.2, 0] : [0, 0, 0]}
           onClick={(e) => {
             e.stopPropagation();
@@ -861,28 +1326,40 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
             document.body.style.cursor = 'default';
           }}
         >
-          <boxGeometry args={[0.46, 0.94, 0.01]} />
-          <meshStandardMaterial color="#00d8ff" transparent opacity={0.2} roughness={0.05} metalness={0.9} />
+          <boxGeometry args={[0.51, 1.18, 0.01]} />
+          <meshStandardMaterial color="#00d8ff" transparent opacity={0.25} roughness={0.05} metalness={0.9} />
         </mesh>
       </group>
 
       {/* ========================================== */}
       {/*   PHYSICALLY INTERACTIVE COKE CANS & SNACKS */}
       {/* ========================================== */}
-      {/* Absolute positioned items mapped on shelf coordinates */}
-      <DraggableItem type="can" color="#ff0000" labelColor="#ffffff" initialPosition={[-2.33, 0.4, -0.11]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" color="#ff0000" labelColor="#ffffff" initialPosition={[-2.27, 0.4, -0.22]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" color="#ff0000" labelColor="#ffffff" initialPosition={[-2.16, 0.4, -0.28]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" color="#ff0000" labelColor="#ffffff" initialPosition={[-2.3, 0.75, -0.17]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" color="#ff0000" labelColor="#ffffff" initialPosition={[-2.22, 0.75, -0.25]} fridgeOpen={fridgeOpen} />
-      
-      <DraggableItem type="snack" color="#ff6b00" initialPosition={[-2.36, 1.01, -0.19]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="snack" color="#ffcc00" initialPosition={[-2.21, 1.01, -0.27]} fridgeOpen={fridgeOpen} />
+      {/* Shelf 1 (Bottom Shelf, Y = 0.38) */}
+      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.70, 0.38, 0.92]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.55, 0.38, 0.80]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 0.38, 0.68]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="water" color="#a5d6a7" initialPosition={[-4.73, 0.38, 0.80]} fridgeOpen={fridgeOpen} />
+
+      {/* Shelf 2 (Middle Shelf, Y = 0.75) */}
+      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.55, 0.75, 0.92]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 0.75, 0.80]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.55, 0.75, 0.68]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="orange" color="#ff6d00" initialPosition={[-4.73, 0.75, 0.92]} fridgeOpen={fridgeOpen} />
+
+      {/* Shelf 3 (Top Shelf, Y = 1.08) */}
+      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 1.08, 0.92]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.55, 1.08, 0.80]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.70, 1.08, 0.68]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="water" color="#a5d6a7" initialPosition={[-4.55, 1.08, 0.68]} fridgeOpen={fridgeOpen} />
+
+      {/* Snacks on top of Vending Machine */}
+      <DraggableItem type="snack" color="#ff6b00" initialPosition={[-4.70, 1.34, 0.90]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="snack" color="#ffcc00" initialPosition={[-4.60, 1.34, 0.70]} fridgeOpen={fridgeOpen} />
 
       {/* ========================================== */}
       {/*   WALL AIR CONDITIONER (AIRCOND)           */}
       {/* ========================================== */}
-      <group position={[0, 3.4, -0.98]}>
+      <group position={[0, 3.28, -0.98]} scale={1.65}>
         <mesh castShadow>
           <boxGeometry args={[1.2, 0.28, 0.22]} />
           <meshStandardMaterial color="#f0f2f5" roughness={0.2} metalness={0.1} />
@@ -901,55 +1378,13 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
       {/* ========================================== */}
       {/*   MEDIUM/LARGE HOUSEPLANT (RIGHT CORNER)   */}
       {/* ========================================== */}
-      <group position={[3.6, 0.22, 3.2]}>
-        {/* Ceramic Clay Pot (Medium size) */}
-        <mesh castShadow>
-          <cylinderGeometry args={[0.26, 0.18, 0.45, 12]} />
-          <meshStandardMaterial color="#8e533d" roughness={0.8} />
-        </mesh>
-        {/* Soil */}
-        <mesh position={[0, 0.21, 0]}>
-          <cylinderGeometry args={[0.25, 0.25, 0.02, 12]} />
-          <meshStandardMaterial color="#3d2314" roughness={0.9} />
-        </mesh>
-        {/* Palm Leaves group (Click/hover to rustle) */}
-        <group 
-          ref={plantRef}
-          position={[0, 0.24, 0]}
-          onClick={(e) => {
-            e.stopPropagation();
-            setPlantRustleTime(Date.now() / 1000);
-          }}
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            document.body.style.cursor = 'pointer';
-          }}
-          onPointerOut={() => {
-            document.body.style.cursor = 'default';
-          }}
-        >
-          <mesh rotation={[0.35, 0, 0.1]} castShadow>
-            <boxGeometry args={[0.06, 0.9, 0.15]} />
-            <meshStandardMaterial color="#1a6321" roughness={0.75} />
-          </mesh>
-          <mesh rotation={[-0.35, Math.PI / 3, -0.1]} castShadow>
-            <boxGeometry args={[0.06, 0.9, 0.15]} />
-            <meshStandardMaterial color="#1a6321" roughness={0.75} />
-          </mesh>
-          <mesh rotation={[0.2, -Math.PI / 3, 0.2]} castShadow>
-            <boxGeometry args={[0.06, 0.9, 0.15]} />
-            <meshStandardMaterial color="#1a6321" roughness={0.75} />
-          </mesh>
-          <mesh rotation={[-0.3, -Math.PI / 1.5, -0.15]} castShadow>
-            <boxGeometry args={[0.05, 0.75, 0.12]} />
-            <meshStandardMaterial color="#217929" roughness={0.75} />
-          </mesh>
-          <mesh rotation={[0.3, Math.PI / 1.5, 0.15]} castShadow>
-            <boxGeometry args={[0.05, 0.75, 0.12]} />
-            <meshStandardMaterial color="#217929" roughness={0.75} />
-          </mesh>
-        </group>
-      </group>
+      <DraggableItem 
+        type="plant" 
+        color="#8e533d" 
+        initialPosition={[4.4, 0.4, 4.4]} 
+        scale={[1.8, 1.8, 1.8]} 
+        fridgeOpen={false} 
+      />
 
     </group>
   );

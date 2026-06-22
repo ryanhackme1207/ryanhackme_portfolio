@@ -13,7 +13,8 @@ const views: Record<ViewState, { pos: [number, number, number]; lookAt: [number,
   monitor: { pos: [0, 1.70, 1.50], lookAt: [0, 1.70, -0.5] },
   usb: { pos: [-1.35, 1.70, 1.45], lookAt: [-1.7, 0.82, 0.45] },
   folder: { pos: [1.35, 1.70, 1.45], lookAt: [1.7, 0.82, 0.45] },
-  phone: { pos: [-0.58, 1.68, 1.55], lookAt: [-0.75, 0.82, 0.72] }
+  phone: { pos: [-0.58, 1.68, 1.55], lookAt: [-0.75, 0.82, 0.72] },
+  chair: { pos: [0, 1.22, 1.22], lookAt: [0, 1.20, -0.2] }
 };
 
 export const CameraRig: React.FC<CameraRigProps> = ({ activeView, onTransitionChange }) => {
@@ -160,6 +161,8 @@ export const CameraRig: React.FC<CameraRigProps> = ({ activeView, onTransitionCh
       } else if (activeView === 'phone') {
         targetPos.z = 1.55 * zoomFactor;
         targetPos.x = -0.58 * zoomFactor;
+      } else if (activeView === 'chair') {
+        targetPos.z = 1.22 * zoomFactor;
       }
     }
 

@@ -1,4 +1,4 @@
-export type ViewState = 'desk' | 'monitor' | 'usb' | 'folder' | 'phone';
+export type ViewState = 'desk' | 'monitor' | 'usb' | 'folder' | 'phone' | 'chair';
 
 export interface Project {
   title: string;

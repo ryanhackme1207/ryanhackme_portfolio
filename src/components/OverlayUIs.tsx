@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Key, ShieldCheck, X, Folder, ExternalLink, Network, Shield, Terminal, Code, Cpu, Smartphone, Mail, Phone as PhoneIcon, Github, Linkedin, Send, Radio, Lock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Key, ShieldCheck, X, Folder, ExternalLink, Network, Shield, Terminal, Code, Cpu, Mail, Phone as PhoneIcon, Linkedin, Send, Radio, Lock, Wifi, Battery, Unlock, MessageSquare, Compass, ChevronLeft } from 'lucide-react';
 import type { Project } from '../types';
 
 // ==========================================
@@ -344,217 +344,545 @@ interface PhoneOverlayProps {
 }
 
 export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ onClose }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
-  const [sendingState, setSendingState] = useState<'idle' | 'encrypting' | 'routing' | 'sent'>('idle');
-  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
+  const [iosScreen, setIosScreen] = useState<'lock' | 'home' | 'messages' | 'terminal'>('lock');
+  const [timeStr, setTimeStr] = useState('13:06');
+  const [dateStr, setDateStr] = useState('Monday, June 22');
+  
+  // Chat chatbot state
+  const [chatMessages, setChatMessages] = useState<{ id: string; sender: 'incoming' | 'outgoing' | 'system'; text: string }[]>([
+    { id: '1', sender: 'incoming', text: "Hello! Secure end-to-end encrypted connection established." },
+    { id: '2', sender: 'incoming', text: "To transmit a secure message to my network, please enter your name." }
+  ]);
+  const [inputValue, setInputValue] = useState('');
+  const [chatStep, setChatStep] = useState(0); // 0: name, 1: email, 2: message, 3: sending simulation, 4: complete
+  const [visitorName, setVisitorName] = useState('');
+  const [visitorEmail, setVisitorEmail] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !email || !message) return;
+  // Terminal state
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([
+    "LTH SecOS v14.2.1-RELEASE (tty0)",
+    "Secure Shell handshake established.",
+    "Type 'help' for a list of available host commands.",
+    ""
+  ]);
+  const [terminalInput, setTerminalInput] = useState('');
+  const terminalEndRef = useRef<HTMLDivElement>(null);
 
-    setSendingState('encrypting');
-    setConsoleLogs([
-      ">> INITIALIZING SECURE PACKET CONVERSION...",
-      ">> APPLIYING AES-256 ENCRYPTION SCHEME...",
-      ">> SHA-256 HANDSHAKE HASH GENERATED..."
-    ]);
+  // Update clock
+  useEffect(() => {
+    const updateTime = () => {
+      const d = new Date();
+      const hrs = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      setTimeStr(`${hrs}:${mins}`);
+      
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      setDateStr(`${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Scroll chats to bottom
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isTyping, iosScreen]);
+
+  // Scroll terminal to bottom
+  useEffect(() => {
+    if (terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [terminalLogs, iosScreen]);
+
+  const handleSendChat = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inputValue.trim()) return;
+
+    const userText = inputValue;
+    setInputValue('');
+
+    // Add user's outgoing message
+    setChatMessages(prev => [...prev, { id: String(Date.now()), sender: 'outgoing', text: userText }]);
+
+    setIsTyping(true);
 
     setTimeout(() => {
-      setSendingState('routing');
-      setConsoleLogs(prev => [
-        ...prev,
-        ">> SEARCHING OPTIMAL ROUTING PATHWAYS...",
-        ">> ROUTING VIA IPSEC VPN GATEWAY (192.168.99.1)...",
-        ">> PACKETS SEGMENTED AND SIGNED WITH PKI KEYS..."
-      ]);
+      setIsTyping(false);
+      
+      if (chatStep === 0) {
+        setVisitorName(userText);
+        setChatMessages(prev => [
+          ...prev, 
+          { id: String(Date.now() + 1), sender: 'incoming', text: `Thanks, ${userText}. Now, please enter your email address so I can get back to you.` }
+        ]);
+        setChatStep(1);
+      } else if (chatStep === 1) {
+        // Simple email validator regex
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(userText)) {
+          setChatMessages(prev => [
+            ...prev, 
+            { id: String(Date.now() + 1), sender: 'incoming', text: "Hmm, that email doesn't look valid. Please enter a valid return email address." }
+          ]);
+          return;
+        }
+        setVisitorEmail(userText);
+        setChatMessages(prev => [
+          ...prev, 
+          { id: String(Date.now() + 1), sender: 'incoming', text: "Email registered. Please type your secure message payload." }
+        ]);
+        setChatStep(2);
+      } else if (chatStep === 2) {
+        setChatMessages(prev => [
+          ...prev,
+          { id: String(Date.now() + 1), sender: 'system', text: ">> INITIALIZING SECURE PACKET CONVERSION..." },
+          { id: String(Date.now() + 2), sender: 'system', text: ">> APPLYING AES-256 ENCRYPTION SCHEME..." },
+          { id: String(Date.now() + 3), sender: 'system', text: ">> ROUTING VIA IPSEC VPN GATEWAY (192.168.99.1)..." },
+          { id: String(Date.now() + 4), sender: 'system', text: ">> STATUS 202 - MESSAGE IN QUEUE." }
+        ]);
+        setChatStep(3);
+        
+        setTimeout(() => {
+          setChatMessages(prev => [
+            ...prev,
+            { id: String(Date.now() + 5), sender: 'incoming', text: `Message transmitted! Your packet has been securely sealed. Lai Ting Hong will receive your ping shortly. We will reply to your address at ${visitorEmail}. Thank you, ${visitorName || 'guest'}!` }
+          ]);
+          setChatStep(4);
+        }, 1500);
+      }
     }, 1200);
+  };
+
+  const handleResetChat = () => {
+    setChatMessages([
+      { id: '1', sender: 'incoming', text: "Hello! Secure end-to-end encrypted connection established." },
+      { id: '2', sender: 'incoming', text: "To transmit a secure message to my network, please enter your name." }
+    ]);
+    setChatStep(0);
+    setVisitorName('');
+    setVisitorEmail('');
+    setInputValue('');
+  };
+
+  const handleTerminalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!terminalInput.trim()) return;
+
+    const cmd = terminalInput.trim().toLowerCase();
+    setTerminalInput('');
+    setTerminalLogs(prev => [...prev, `lth-user@secos:~$ ${cmd}`]);
 
     setTimeout(() => {
-      setSendingState('sent');
-      setConsoleLogs(prev => [
-        ...prev,
-        ">> CONNECTION ESTABLISHED WITH LTH_SMTP_SERVER",
-        ">> PACKETS INGESTED SUCCESSFULLY. TRANSMISSION COMPLETE.",
-        ">> STATUS Code: 202 - MESSAGE IN QUEUE."
-      ]);
-      setName('');
-      setEmail('');
-      setMessage('');
-    }, 2800);
+      if (cmd === 'help') {
+        setTerminalLogs(prev => [
+          ...prev,
+          "Available commands:",
+          "  help     - Display host documentation index",
+          "  skills   - List Lai Ting Hong's core skills",
+          "  status   - Show environment networking details",
+          "  exploit  - Execute simulated system test",
+          "  clear    - Clear console buffers",
+          "  exit     - Exit shell"
+        ]);
+      } else if (cmd === 'clear') {
+        setTerminalLogs([]);
+      } else if (cmd === 'skills') {
+        setTerminalLogs(prev => [
+          ...prev,
+          "Network Security:",
+          "  - OSPF, BGP, STP, VLAN routing rulesets",
+          "  - IPSec VPN, SSL, TLS tunnel negotiation",
+          "Ethical Hacking:",
+          "  - OWASP Top 10 web vulnerabilities",
+          "  - Kali Linux pentests & Wireshark logs analysis",
+          "Compliance:",
+          "  - ISO 27001, PDPA, CIA triad policy guidelines"
+        ]);
+      } else if (cmd === 'status') {
+        setTerminalLogs(prev => [
+          ...prev,
+          "OS Version  : SecOS v14.2.1-RELEASE",
+          "VLAN IP     : 192.168.99.2",
+          "VPN Status  : Connected (IPSec tunnel active)",
+          "Uptime      : 42m 12s",
+          "CPU Load    : 4.8%"
+        ]);
+      } else if (cmd === 'exit') {
+        setIosScreen('home');
+      } else if (cmd === 'exploit') {
+        setTerminalLogs(prev => [...prev, ">> PINGING EXPLOIT HOST GATEWAY...", ">> INJECTING BUFFER OVERFLOW BUFFER (0x41414141)..."]);
+        setTimeout(() => {
+          setTerminalLogs(prev => [
+            ...prev,
+            ">> BYPASSING STACK OVERFLOW CANARIES...",
+            ">> STAGE-1 PAYLOAD DEPLOYED AT MEMORY 0x00FF8C12...",
+            ">> ROOT SECURITY ACCESS GRANTED! SYSTEM DISRUPTED."
+          ]);
+        }, 1000);
+      } else {
+        setTerminalLogs(prev => [...prev, `secos: command not found: ${cmd}`]);
+      }
+    }, 150);
+  };
+
+  const handleHomeBtnClick = () => {
+    if (iosScreen === 'lock') {
+      setIosScreen('home');
+    } else {
+      setIosScreen('home');
+    }
   };
 
   return (
-    <div className="absolute inset-0 bg-cyber-bg/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="w-[380px] h-[660px] bg-cyber-dark border-2 border-cyber-neonPurple rounded-3xl shadow-[0_0_35px_rgba(177,0,232,0.35)] overflow-hidden flex flex-col scanlines relative">
+    <div className="absolute inset-0 bg-[#090610]/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in font-sans selection:bg-[#007aff]/30">
+      
+      {/* Outer Phone Bezel Structure (Titanium iPhone Design) */}
+      <div className="w-[370px] h-[670px] bg-[#1c1c1e] border-[8px] border-[#d1d5db] rounded-[48px] shadow-[0_0_50px_rgba(0,122,255,0.25)] overflow-hidden flex flex-col relative">
         
-        {/* Smartphone Camera Notch */}
-        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-5 bg-cyber-bg border-b border-x border-cyber-neonPurple/30 rounded-b-xl z-20 flex justify-center items-center">
-          <div className="w-2 h-2 bg-cyber-dark rounded-full border border-cyber-neonPurple/30 mr-4"></div>
-          <div className="w-12 h-1.5 bg-cyber-dark/80 rounded-full border border-cyber-neonPurple/20"></div>
-        </div>
-
-        {/* Top Status Bar */}
-        <div className="bg-cyber-dark px-6 pt-6 pb-2 border-b border-cyber-neonPurple/20 flex justify-between items-center text-[10px] font-mono text-cyber-neonPurple/70">
-          <span className="flex items-center gap-1"><Radio className="w-3 h-3 text-cyber-neonGreen animate-pulse" /> 5G LTH_SEC</span>
-          <span className="flex items-center gap-1 font-bold"><Lock className="w-3 h-3 text-cyber-neonGreen" /> VPN SECURE</span>
-          <span>13:06 PM</span>
-        </div>
-
-        {/* Close button */}
-        <div className="flex justify-between items-center px-4 py-3 bg-cyber-dark/60 border-b border-cyber-neonPurple/15 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <Smartphone className="w-4.5 h-4.5 text-cyber-neonPurple" />
-            <span className="font-mono text-xs font-semibold text-cyber-heading">ANALYST_COMMS</span>
+        {/* Dynamic Island Notch */}
+        <div className="absolute top-2.5 left-1/2 transform -translate-x-1/2 w-28 h-6 bg-black rounded-full z-30 flex items-center justify-between px-3 text-[9px] text-[#00ff66] font-mono select-none">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#1c1c1e] border border-zinc-700"></div>
+          {iosScreen === 'messages' && <span className="animate-pulse flex items-center gap-0.5"><div className="w-1 h-1 rounded-full bg-green-500"></div> iMessage</span>}
+          {iosScreen === 'terminal' && <span className="animate-pulse flex items-center gap-0.5"><div className="w-1 h-1 rounded-full bg-red-500"></div> shell</span>}
+          {iosScreen === 'home' && <span className="text-zinc-500">SecOS</span>}
+          {iosScreen === 'lock' && <Lock className="w-2.5 h-2.5 text-zinc-500" />}
+          <div className="w-2 h-2 rounded-full bg-zinc-900 flex justify-center items-center">
+            <div className="w-0.5 h-0.5 rounded-full bg-blue-900"></div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-1 border border-cyber-neonPurple/20 hover:border-cyber-neonGreen rounded bg-cyber-neonPurple/5 hover:bg-cyber-neonGreen/10 transition-all text-cyber-neonPurple hover:text-cyber-neonGreen cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
-        {/* Content Pane */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+        {/* Top Status Bar Inside Screen */}
+        <div className="h-10 bg-transparent flex justify-between items-end px-6 pb-1 select-none z-20 text-white font-medium text-xs">
+          <span>{timeStr}</span>
+          <div className="flex items-center gap-1.5">
+            <Radio className="w-3.5 h-3.5 text-white/90 animate-pulse" />
+            <span className="text-[10px] tracking-tighter">5G</span>
+            <Wifi className="w-3.5 h-3.5 text-white/90" />
+            <Battery className="w-4 h-4 text-white/95" />
+          </div>
+        </div>
+
+        {/* Main Display Area */}
+        <div className="flex-1 relative overflow-hidden select-none">
           
-          {/* Quick Links */}
-          <div className="cyber-panel-purple p-3 bg-cyber-dark/80 space-y-2 border-cyber-neonPurple/20">
-            <div className="text-[10px] font-mono text-cyber-text/50 uppercase tracking-widest border-b border-cyber-neonPurple/15 pb-1 flex justify-between">
-              <span>Direct Comms</span>
-              <span className="text-cyber-neonGreen flex items-center gap-0.5"><ShieldCheck className="w-3 h-3" /> VERIFIED</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <a 
-                href="mailto:ryan.cyber.work@gmail.com" 
-                className="flex items-center gap-2 p-2 bg-cyber-neonPurple/5 hover:bg-cyber-neonPurple/20 border border-cyber-neonPurple/20 rounded transition-all text-cyber-neonPurple"
-              >
-                <Mail className="w-4 h-4 flex-shrink-0 text-cyber-neonGreen" />
-                <span className="truncate">ryan.cyber.work@gmail.com</span>
-              </a>
-              <a 
-                href="tel:+601112248122" 
-                className="flex items-center gap-2 p-2 bg-cyber-neonPurple/5 hover:bg-cyber-neonPurple/20 border border-cyber-neonPurple/20 rounded transition-all text-cyber-neonPurple"
-              >
-                <PhoneIcon className="w-4 h-4 flex-shrink-0 text-cyber-neonGreen" />
-                <span>+601112248122</span>
-              </a>
-              <a 
-                href="https://github.com/ryanhackme" 
-                target="_blank" 
-                rel="noreferrer"
-                className="flex items-center gap-2 p-2 bg-cyber-neonPurple/5 hover:bg-cyber-neonPurple/20 border border-cyber-neonPurple/20 rounded transition-all text-cyber-neonPurple"
-              >
-                <Github className="w-4 h-4 flex-shrink-0 text-cyber-neonGreen" />
-                <span>GitHub</span>
-              </a>
-              <a 
-                href="https://linkedin.com/in/lai-ting-hong" 
-                target="_blank" 
-                rel="noreferrer"
-                className="flex items-center gap-2 p-2 bg-cyber-neonPurple/5 hover:bg-cyber-neonPurple/20 border border-cyber-neonPurple/20 rounded transition-all text-cyber-neonPurple"
-              >
-                <Linkedin className="w-4 h-4 flex-shrink-0 text-cyber-neonGreen" />
-                <span>LinkedIn</span>
-              </a>
-            </div>
-          </div>
+          {/* ========================================== */}
+          {/*   LOCK SCREEN SCREEN                       */}
+          {/* ========================================== */}
+          {iosScreen === 'lock' && (
+            <div 
+              onClick={() => setIosScreen('home')}
+              className="absolute inset-0 bg-gradient-to-b from-[#180e29] via-[#3b1754] to-[#120a1f] flex flex-col items-center justify-between p-6 cursor-pointer text-center animate-fade-in"
+            >
+              <div className="w-full flex flex-col items-center mt-6">
+                <div className="flex items-center gap-1 mb-2 text-white/60">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span className="text-[10px] uppercase tracking-widest font-semibold">Sealed Connection</span>
+                </div>
+                <span className="text-white/60 text-xs font-semibold uppercase tracking-wider">{dateStr}</span>
+                <span className="text-white/90 font-light text-5xl tracking-wide my-1.5">{timeStr}</span>
+              </div>
 
-          {/* Secure Ping Form */}
-          <div className="cyber-panel-purple p-3 bg-cyber-dark/80 border-cyber-neonPurple/20 flex flex-col gap-3">
-            <div className="text-[10px] font-mono text-cyber-text/50 uppercase tracking-widest border-b border-cyber-neonPurple/15 pb-1">
-              Transmit Encrypted Message
-            </div>
+              {/* Glassmorphic Notification Widget */}
+              <div className="w-full max-w-[300px] bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-3 text-left shadow-lg transition-transform hover:scale-[1.02] cursor-pointer flex flex-col gap-1.5">
+                <div className="flex justify-between items-center text-[10px] text-white/50 font-semibold">
+                  <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3 text-[#34c759]" /> MESSAGES</span>
+                  <span>now</span>
+                </div>
+                <div className="text-xs font-bold text-white/95">Lai Ting Hong</div>
+                <div className="text-xs text-white/70 leading-snug">Secure handshake established. Tap to open communications tunnel.</div>
+              </div>
 
-            {sendingState === 'idle' && (
-              <form onSubmit={handleSubmit} className="space-y-2.5 text-xs font-mono">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-cyber-neonPurple/70 uppercase">Caller Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Security Auditor / Recruiter"
-                    className="w-full bg-cyber-dark border border-cyber-neonPurple/25 rounded px-2 py-1.5 focus:outline-none focus:border-cyber-neonGreen text-cyber-heading"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-cyber-neonPurple/70 uppercase">VLAN Return Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="recruiter@wevo.com"
-                    className="w-full bg-cyber-dark border border-cyber-neonPurple/25 rounded px-2 py-1.5 focus:outline-none focus:border-cyber-neonGreen text-cyber-heading"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-cyber-neonPurple/70 uppercase">Secure Message Payload</label>
-                  <textarea
-                    required
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    rows={4}
-                    placeholder="We would love to schedule a technical chat about network opportunities at Wevo..."
-                    className="w-full bg-cyber-dark border border-cyber-neonPurple/25 rounded px-2 py-1.5 focus:outline-none focus:border-cyber-neonGreen text-cyber-heading resize-none"
-                  />
-                </div>
-                
-                <button
-                  type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-2 bg-cyber-neonPurple/15 hover:bg-cyber-neonPurple/30 text-cyber-neonPurple border border-cyber-neonPurple/40 rounded transition-all hover:shadow-glow-purple font-bold uppercase cursor-pointer"
+              <div className="w-full flex flex-col items-center gap-1 mb-4 select-none animate-bounce">
+                <Unlock className="w-4 h-4 text-white/40" />
+                <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Tap Screen to Unlock</span>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================== */}
+          {/*   HOME SCREEN                              */}
+          {/* ========================================== */}
+          {iosScreen === 'home' && (
+            <div 
+              className="absolute inset-0 bg-gradient-to-b from-[#150d24] via-[#200f3e] to-[#0f091a] flex flex-col justify-between p-6 animate-fade-in"
+            >
+              {/* App Grid */}
+              <div className="grid grid-cols-4 gap-y-6 gap-x-4 mt-6">
+                {/* Messages */}
+                <button 
+                  onClick={() => setIosScreen('messages')}
+                  className="flex flex-col items-center gap-1.5 cursor-pointer focus:outline-none"
                 >
-                  <Send className="w-3.5 h-3.5" /> PING ANALYST
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#2ecc71] to-[#27ae60] flex items-center justify-center shadow-lg shadow-green-950/20 active:scale-90 transition-transform">
+                    <MessageSquare className="w-7 h-7 text-white" />
+                  </div>
+                  <span className="text-[10px] text-white/80 font-medium tracking-tight">Messages</span>
                 </button>
-              </form>
-            )}
 
-            {sendingState !== 'idle' && (
-              <div className="space-y-3 font-mono text-[10px]">
-                <div className="bg-cyber-dark border border-cyber-neonPurple/10 p-2 rounded h-40 overflow-y-auto custom-scrollbar text-cyber-neonPurple space-y-1 flex flex-col justify-end">
-                  {consoleLogs.map((log, idx) => (
-                    <div key={idx} className="leading-tight">{log}</div>
-                  ))}
-                  {sendingState === 'encrypting' && <div className="text-cyber-neonGreen animate-pulse">&gt;&gt; ENCRYPTING CONTENT PROTOCOLS...</div>}
-                  {sendingState === 'routing' && <div className="text-cyber-neonGreen animate-pulse">&gt;&gt; RESOLVING IPSEC ROUTER BOUNDS...</div>}
-                  {sendingState === 'sent' && <div className="text-cyber-neonGreen font-bold">&gt;&gt; TRANSMISSION COMPLETED SUCESSFULLY!</div>}
+                {/* Terminal */}
+                <button 
+                  onClick={() => setIosScreen('terminal')}
+                  className="flex flex-col items-center gap-1.5 cursor-pointer focus:outline-none"
+                >
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#2c3e50] to-[#1a252f] border border-zinc-800 flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                    <Terminal className="w-6.5 h-6.5 text-[#39ff14]" />
+                  </div>
+                  <span className="text-[10px] text-white/80 font-medium tracking-tight">Terminal</span>
+                </button>
+
+                {/* Safari (GitHub) */}
+                <a 
+                  href="https://github.com/ryanhackme" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="flex flex-col items-center gap-1.5 focus:outline-none"
+                >
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#3498db] to-[#2980b9] flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                    <Compass className="w-7 h-7 text-white" />
+                  </div>
+                  <span className="text-[10px] text-white/80 font-medium tracking-tight">Safari</span>
+                </a>
+
+                {/* LinkedIn */}
+                <a 
+                  href="https://linkedin.com/in/lai-ting-hong" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="flex flex-col items-center gap-1.5 focus:outline-none"
+                >
+                  <div className="w-13 h-13 rounded-2xl bg-[#0077b5] flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                    <Linkedin className="w-7 h-7 text-white" />
+                  </div>
+                  <span className="text-[10px] text-white/80 font-medium tracking-tight">LinkedIn</span>
+                </a>
+
+                {/* Direct Mail */}
+                <a 
+                  href="mailto:ryan.cyber.work@gmail.com" 
+                  className="flex flex-col items-center gap-1.5 focus:outline-none"
+                >
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#e74c3c] to-[#c0392b] flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                    <Mail className="w-6.5 h-6.5 text-white" />
+                  </div>
+                  <span className="text-[10px] text-white/80 font-medium tracking-tight">Mail</span>
+                </a>
+
+                {/* Direct Phone */}
+                <a 
+                  href="tel:+601112248122" 
+                  className="flex flex-col items-center gap-1.5 focus:outline-none"
+                >
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#2ecc71] to-[#27ae60] flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                    <PhoneIcon className="w-6.5 h-6.5 text-white" />
+                  </div>
+                  <span className="text-[10px] text-white/80 font-medium tracking-tight">Phone</span>
+                </a>
+              </div>
+
+              {/* Bottom iOS frosted glass dock containing quick launch */}
+              <div className="w-full bg-white/10 backdrop-blur-xl border border-white/15 rounded-3xl p-3 flex justify-around items-center shadow-2xl mb-2">
+                <button 
+                  onClick={() => setIosScreen('messages')} 
+                  className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#2ecc71] to-[#27ae60] flex items-center justify-center active:scale-95 transition-transform"
+                >
+                  <MessageSquare className="w-6 h-6 text-white" />
+                </button>
+                <button 
+                  onClick={() => setIosScreen('terminal')}
+                  className="w-12 h-12 rounded-xl bg-black border border-zinc-800 flex items-center justify-center active:scale-95 transition-transform"
+                >
+                  <Terminal className="w-6 h-6 text-[#39ff14]" />
+                </button>
+                <a 
+                  href="https://github.com/ryanhackme" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#3498db] to-[#2980b9] flex items-center justify-center active:scale-95 transition-transform"
+                >
+                  <Compass className="w-6.5 h-6.5 text-white" />
+                </a>
+                <a 
+                  href="mailto:ryan.cyber.work@gmail.com"
+                  className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#e74c3c] to-[#c0392b] flex items-center justify-center active:scale-95 transition-transform"
+                >
+                  <Mail className="w-6 h-6 text-white" />
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================== */}
+          {/*   MESSAGES APP (IMESSAGE STYLE CHATBOT)    */}
+          {/* ========================================== */}
+          {iosScreen === 'messages' && (
+            <div className="absolute inset-0 bg-black flex flex-col animate-fade-in text-white">
+              
+              {/* iMessage Header */}
+              <div className="h-14 bg-[#121212] border-b border-zinc-800 flex items-center justify-between px-3 z-10">
+                <button 
+                  onClick={() => setIosScreen('home')}
+                  className="flex items-center text-[#0b84ff] text-xs font-semibold cursor-pointer"
+                >
+                  <ChevronLeft className="w-5 h-5 -ml-1.5" /> Home
+                </button>
+                <div className="flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-white select-none">
+                    LH
+                  </div>
+                  <span className="text-[10px] font-bold text-zinc-300 mt-0.5">Lai Ting Hong</span>
                 </div>
+                <div className="w-10 h-1"></div> {/* spacer */}
+              </div>
 
-                {sendingState === 'sent' && (
-                  <button
-                    onClick={() => setSendingState('idle')}
-                    className="w-full py-1.5 border border-cyber-neonPurple/30 hover:border-cyber-neonPurple text-cyber-neonPurple rounded transition-all hover:bg-cyber-neonPurple/10 cursor-pointer"
+              {/* Chat Thread */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 flex flex-col">
+                <div className="text-[9px] text-zinc-500 text-center uppercase tracking-widest my-2 select-none">iMessage • End-to-End Encrypted</div>
+                
+                {chatMessages.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className={`max-w-[75%] px-3.5 py-2 rounded-2xl text-xs font-sans whitespace-pre-wrap leading-relaxed select-text ${
+                      msg.sender === 'incoming' 
+                        ? 'self-start bg-[#262629] text-white rounded-tl-sm' 
+                        : msg.sender === 'outgoing' 
+                        ? 'self-end bg-[#0b84ff] text-white rounded-tr-sm' 
+                        : 'self-center bg-zinc-900/50 border border-zinc-800 text-cyber-neonPurple px-3 py-1.5 rounded-lg font-mono text-[9px] max-w-[90%] text-center leading-normal'
+                    }`}
                   >
-                    SEND ANOTHER PING
+                    {msg.text}
+                  </div>
+                ))}
+
+                {isTyping && (
+                  <div className="self-start bg-[#262629] px-4 py-2.5 rounded-2xl rounded-tl-sm flex gap-1 items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                )}
+
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Chat input box */}
+              <div className="p-3 bg-[#121214] border-t border-zinc-900">
+                {chatStep === 4 ? (
+                  <button 
+                    onClick={handleResetChat}
+                    className="w-full bg-[#1c1c1e] hover:bg-[#2c2c2e] border border-zinc-800 text-[#0b84ff] py-2 rounded-xl text-xs font-semibold cursor-pointer active:scale-[0.98] transition-transform"
+                  >
+                    Send Another Secure Ping
                   </button>
+                ) : (
+                  <form onSubmit={handleSendChat} className="flex gap-2 items-center">
+                    <input 
+                      type={chatStep === 1 ? "email" : "text"}
+                      required
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      placeholder={
+                        chatStep === 0 ? "Type your name..." : 
+                        chatStep === 1 ? "Type your return email..." : 
+                        chatStep === 2 ? "Type secure message..." : 
+                        "Encrypting connection..."
+                      }
+                      disabled={chatStep === 3 || isTyping}
+                      className="flex-1 bg-[#1c1c1e] text-white text-xs px-3.5 py-2.5 rounded-full border border-zinc-800 focus:outline-none focus:border-[#0b84ff] placeholder-zinc-500"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={!inputValue.trim() || chatStep === 3 || isTyping}
+                      className="w-8 h-8 rounded-full bg-[#0b84ff] hover:bg-[#1a8cff] active:scale-90 flex items-center justify-center text-white disabled:opacity-40 transition-transform cursor-pointer"
+                    >
+                      <Send className="w-4 h-4 transform rotate-45 -translate-x-0.5" />
+                    </button>
+                  </form>
                 )}
               </div>
-            )}
-          </div>
 
-          <div className="cyber-panel-purple p-3 bg-cyber-dark/80 border-cyber-neonPurple/15 space-y-1 text-[9px] font-mono text-cyber-text/50">
-            <div>DEVICE: LTH-COMMS-LINK-X</div>
-            <div>NET PATH: MELAKA-CELLULAR-NAT-3</div>
-            <div>AUDIT SIG: LTH_HACKME_SECPORTFOLIO</div>
-          </div>
+            </div>
+          )}
+
+          {/* ========================================== */}
+          {/*   TERMINAL APP                             */}
+          {/* ========================================== */}
+          {iosScreen === 'terminal' && (
+            <div className="absolute inset-0 bg-[#020205] flex flex-col animate-fade-in text-[#39ff14] font-mono">
+              
+              {/* Terminal Header */}
+              <div className="h-12 bg-zinc-900/60 border-b border-zinc-800/40 flex items-center justify-between px-3 text-white">
+                <span className="text-xs font-semibold select-none flex items-center gap-1.5"><Terminal className="w-3.5 h-3.5 text-[#39ff14]" /> SecOS Shell</span>
+                <button 
+                  onClick={() => setIosScreen('home')}
+                  className="text-xs text-zinc-400 hover:text-white cursor-pointer select-none"
+                >
+                  Exit
+                </button>
+              </div>
+
+              {/* Scrollable logs */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-1.5 text-[10px] leading-relaxed custom-scrollbar">
+                {terminalLogs.map((log, index) => (
+                  <div key={index} className="whitespace-pre-wrap select-text">{log}</div>
+                ))}
+                <div ref={terminalEndRef} />
+              </div>
+
+              {/* Terminal Input form */}
+              <form onSubmit={handleTerminalSubmit} className="p-3 bg-black/80 border-t border-zinc-800/30 flex items-center gap-2">
+                <span className="text-zinc-500 text-[10px] select-none">lth-user@secos:~$</span>
+                <input 
+                  type="text"
+                  value={terminalInput}
+                  onChange={(e) => setTerminalInput(e.target.value)}
+                  placeholder="Type help..."
+                  className="flex-1 bg-transparent text-[#39ff14] text-[10px] font-mono focus:outline-none"
+                  autoFocus
+                />
+              </form>
+
+            </div>
+          )}
+
+          {/* Home swipe indicator bar overlay at the very bottom */}
+          {iosScreen !== 'lock' && (
+            <div 
+              onClick={() => setIosScreen('home')}
+              className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-white/40 rounded-full z-30 cursor-pointer hover:bg-white/60"
+            />
+          )}
 
         </div>
 
-        {/* Physical Home Button on Mobile Device */}
-        <div className="bg-cyber-dark py-3 border-t border-cyber-neonPurple/20 flex justify-center items-center flex-shrink-0">
+        {/* Physical Home Button on the iPhone casing */}
+        <div className="bg-[#1c1c1e] py-3.5 border-t border-zinc-800 flex justify-center items-center flex-shrink-0 select-none z-20">
           <button 
-            onClick={onClose}
-            className="w-10 h-10 rounded-full border border-cyber-neonPurple/35 hover:border-cyber-neonGreen bg-cyber-neonPurple/5 hover:bg-cyber-neonPurple/15 flex items-center justify-center transition-all cursor-pointer hover:shadow-glow-purple"
-            title="Return to Desk"
+            onClick={handleHomeBtnClick}
+            className="w-10 h-10 rounded-full border border-zinc-700 active:scale-95 bg-zinc-900 hover:bg-zinc-800 flex items-center justify-center transition-all cursor-pointer shadow-inner"
+            title="iOS Home Button"
           >
-            <div className="w-4 h-4 rounded bg-cyber-neonPurple/40"></div>
+            <div className="w-4.5 h-4.5 rounded-[5px] border border-zinc-600"></div>
           </button>
         </div>
 
       </div>
+
+      {/* Floating close X button on outer overlay */}
+      <button 
+        onClick={onClose}
+        className="absolute top-4 right-4 p-2 bg-black/60 border border-zinc-800 hover:border-red-500 rounded-full transition-all text-zinc-400 hover:text-red-500 cursor-pointer"
+        title="Close Device View"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
     </div>
   );
 };
