@@ -248,7 +248,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       ) : type === 'can' ? (
         <group>
           {/* Main Soda Can Cylinder */}
-          <mesh castShadow>
+          <mesh>
             <cylinderGeometry args={[0.035, 0.035, 0.1, 12]} />
             <meshStandardMaterial 
               color={
@@ -316,7 +316,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
         </group>
       ) : (
         /* Snack Box */
-        <mesh castShadow>
+        <mesh>
           <boxGeometry args={[0.13, 0.06, 0.13]} />
           <meshStandardMaterial color={color} roughness={0.85} />
         </mesh>

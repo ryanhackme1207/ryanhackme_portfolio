@@ -160,7 +160,7 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
               if (rowIdx === 2 && colIdx >= -2 && colIdx <= 2) {
                 if (colIdx === 0) {
                   return (
-                    <mesh key={`spacebar`} position={[0, 0.008, z]} castShadow>
+                    <mesh key={`spacebar`} position={[0, 0.008, z]}>
                       <boxGeometry args={[0.26, 0.014, 0.038]} />
                       <meshStandardMaterial color="#39ff14" roughness={0.4} emissive="#39ff14" emissiveIntensity={0.2} />
                     </mesh>
@@ -197,7 +197,7 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
               }
 
               return (
-                <mesh key={`${rowIdx}-${colIdx}`} position={[x, 0.008, z]} castShadow>
+                <mesh key={`${rowIdx}-${colIdx}`} position={[x, 0.008, z]}>
                   <boxGeometry args={[0.046, 0.014, 0.036]} />
                   <meshStandardMaterial 
                     color={keyColor} 

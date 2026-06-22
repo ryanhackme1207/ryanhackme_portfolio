@@ -10,13 +10,15 @@ interface LabSceneProps {
   onNavigate: (view: ViewState) => void;
   lampOn: boolean;
   setLampOn: (on: boolean) => void;
+  highQuality: boolean;
 }
 
 export const LabScene: React.FC<LabSceneProps> = ({ 
   activeView, 
   onNavigate,
   lampOn,
-  setLampOn
+  setLampOn,
+  highQuality
 }) => {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -25,8 +27,8 @@ export const LabScene: React.FC<LabSceneProps> = ({
     // so HTML overlays (USB/Folder/Phone panels) can receive clicks
     <div className={`w-full h-full bg-cyber-bg absolute inset-0 z-0 ${(activeView !== 'desk' && activeView !== 'monitor') ? 'pointer-events-none' : ''}`}>
       <Canvas
-        shadows
-        dpr={[1, 1.5]}
+        shadows={highQuality}
+        dpr={highQuality ? [1, 1.5] : 1}
         gl={{ 
           antialias: true, 
           alpha: false,

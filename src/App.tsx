@@ -3,13 +3,14 @@ import type { ViewState } from './types';
 import LabScene from './components/LabScene';
 import GatewayScreen from './components/GatewayScreen';
 import { USBOverlay, FolderOverlay, PhoneOverlay } from './components/OverlayUIs';
-import { Shield, Eye, Network, RefreshCw, Volume2, VolumeX, HelpCircle, CornerDownLeft } from 'lucide-react';
+import { Shield, Eye, Network, RefreshCw, Volume2, VolumeX, HelpCircle, CornerDownLeft, Zap, Sparkles } from 'lucide-react';
 
 function App() {
   const [entryMode, setEntryMode] = useState<'gateway' | '3d'>('gateway');
   const [activeView, setActiveView] = useState<ViewState>('desk');
   const [muteSound, setMuteSound] = useState(true);
   const [lampOn, setLampOn] = useState(true);
+  const [highQuality, setHighQuality] = useState(false); // Default to false (Performance Mode) for smooth rendering in Chrome
   const [isMobile, setIsMobile] = useState(false);
   const [systemAlert, setSystemAlert] = useState('SYS-LOG INGEST: 8 SUSPICIOUS THREATS IN PAST 24H');
   const [logs, setLogs] = useState<string[]>([
@@ -129,6 +130,7 @@ function App() {
         onNavigate={handleNavigate} 
         lampOn={lampOn}
         setLampOn={setLampOn}
+        highQuality={highQuality}
       />
 
       {/* 2. Top-Level Cybersecurity HUD (Header) */}
@@ -156,7 +158,7 @@ function App() {
           <span className="font-bold uppercase animate-pulse text-gradient">{systemAlert}</span>
         </div>
 
-        {/* Control Center (Sound, Reset, Help, Return to Gateway) */}
+        {/* Control Center (Sound, Quality, Reset, Return to Gateway) */}
         <div className="cyber-panel-purple p-2 bg-cyber-dark/85 backdrop-blur-md pointer-events-auto border-cyber-neonPurple/30 flex items-center gap-1.5">
           {/* Sound Toggle */}
           <button 
@@ -165,6 +167,24 @@ function App() {
             title={muteSound ? "Unmute Ambient Sound" : "Mute Sound"}
           >
             {muteSound ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-cyber-neonGreen animate-pulse" />}
+          </button>
+          
+          <div className="w-[1px] h-4 bg-cyber-neonPurple/20" />
+
+          {/* Quality Toggle */}
+          <button 
+            onClick={() => setHighQuality(!highQuality)}
+            className="p-1.5 hover:bg-cyber-neonPurple/15 rounded text-cyber-text hover:text-cyber-neonPurple transition-colors cursor-pointer flex items-center gap-1"
+            title={highQuality ? "Switch to Performance Mode (Smoother)" : "Switch to High Quality Mode (Shadows)"}
+          >
+            {highQuality ? (
+              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+            ) : (
+              <Zap className="w-4 h-4 text-cyber-neonGreen" />
+            )}
+            <span className="text-[9px] font-mono font-semibold hidden sm:inline">
+              {highQuality ? "HIGH-Q" : "PERF-MODE"}
+            </span>
           </button>
           
           <div className="w-[1px] h-4 bg-cyber-neonPurple/20" />
