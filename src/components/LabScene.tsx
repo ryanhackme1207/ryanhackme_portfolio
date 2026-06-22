@@ -21,7 +21,9 @@ export const LabScene: React.FC<LabSceneProps> = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   return (
-    <div className="w-full h-full bg-cyber-bg absolute inset-0 z-0">
+    // When not in desk view, disable pointer events on the entire 3D canvas layer
+    // so HTML overlays (virtual PC screen, USB/Folder/Phone panels) can receive clicks
+    <div className={`w-full h-full bg-cyber-bg absolute inset-0 z-0 ${activeView !== 'desk' ? 'pointer-events-none' : ''}`}>
       <Canvas
         shadows
         gl={{ 
