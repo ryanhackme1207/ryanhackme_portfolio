@@ -25,13 +25,13 @@ export const MobilePortfolio: React.FC = () => {
         </div>
         <div>
           <h1 className="text-xl font-bold tracking-wider font-mono text-cyber-heading text-gradient">
-            LAI TING HONG
+            RYAN LAI TING HONG
           </h1>
           <p className="text-xs text-cyber-neonGreen font-mono uppercase tracking-widest mt-1">
             Cybersecurity & Network Security Specialist
           </p>
           <p className="text-[10px] text-cyber-text/60 font-mono mt-0.5">
-            MMU Melaka (Final Year) // Actively seeking roles at Wevo
+            MMU Cyberjaya (Final Year) // Actively seeking roles at Wevo
           </p>
         </div>
         <div className="w-full h-[1px] bg-cyber-neonPurple/20 my-1" />
@@ -51,10 +51,10 @@ export const MobilePortfolio: React.FC = () => {
         </div>
         <p className="text-cyber-neonGreen/60">$ cat portfolio_meta.dat</p>
         <p className="text-cyber-text/90">
-          <span className="text-cyber-neonGreen font-bold">&gt; NAME:</span> Lai Ting Hong<br />
-          <span className="text-cyber-neonGreen font-bold">&gt; INSTITUTION:</span> Multimedia University (Melaka)<br />
+          <span className="text-cyber-neonGreen font-bold">&gt; NAME:</span> Ryan Lai Ting Hong<br />
+          <span className="text-cyber-neonGreen font-bold">&gt; INSTITUTION:</span> Multimedia University (Cyberjaya)<br />
           <span className="text-cyber-neonGreen font-bold">&gt; DIVISION:</span> Network Security & Cryptographic Analysis<br />
-          <span className="text-cyber-neonGreen font-bold">&gt; CURRENT FOCUS:</span> Hashing performance metrics simulations across hybrid Cisco-to-Juniper backbones. Actively researching multi-bit flow mapping optimizations.
+          <span className="text-cyber-neonGreen font-bold">&gt; CURRENT FOCUS:</span> Hashing performance metrics simulations across hybrid Cisco-to-Juniper backbones. Actively researching multi-bit flow mapping optimizations. Network-obsessed fanatic.
         </p>
         <div className="w-full h-[1px] bg-cyber-neonGreen/10 my-2" />
         <p className="text-[10px] text-cyber-text/50">
@@ -132,7 +132,7 @@ export const MobilePortfolio: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-cyber-heading font-bold">Multimedia University (Melaka)</h4>
+                    <h4 className="text-cyber-heading font-bold">Multimedia University (Cyberjaya)</h4>
                     <p className="text-[10px] text-cyber-neonPurple">Bachelor of Computer Science (Specializing in Network Security)</p>
                   </div>
                   <span className="text-[10px] text-cyber-neonGreen font-semibold">2023 - Present</span>

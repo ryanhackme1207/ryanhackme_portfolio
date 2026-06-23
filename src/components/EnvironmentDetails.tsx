@@ -1,15 +1,27 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Line } from '@react-three/drei';
+import { Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { ViewState } from '../types';
 import InteractiveObject from './InteractiveObject';
+import TutorialMarker from './TutorialMarker';
 
 interface EnvironmentDetailsProps {
   lampOn: boolean;
   setLampOn: (on: boolean) => void;
   activeView: ViewState;
   onNavigate: (view: ViewState) => void;
+  completedTutorialSteps: {
+    monitor: boolean;
+    usb: boolean;
+    folder: boolean;
+    phone: boolean;
+    fridge: boolean;
+    sofa: boolean;
+    physics: boolean;
+  };
+  onFridgeOpen: () => void;
+  onPhysicsInteract: () => void;
 }
 
 // -------------------------------------------------------------
@@ -23,6 +35,7 @@ interface DraggableItemProps {
   labelColor?: string;
   scale?: [number, number, number];
   brand?: 'coke' | 'sprite' | '100plus' | 'water' | 'orange';
+  onPhysicsInteract?: () => void;
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({
@@ -32,7 +45,8 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   fridgeOpen,
   labelColor = '#ffffff',
   scale = [1, 1, 1],
-  brand
+  brand,
+  onPhysicsInteract
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -46,16 +60,16 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   useFrame((state) => {
     if (!groupRef.current) return;
 
+    // Force pointer coordinates to center (0, 0) during pointer lock so that FPS aim clicking/dragging is perfectly centered on the crosshair!
+    if (document.pointerLockElement) {
+      state.pointer.set(0, 0);
+    }
+
     if (isDragging) {
-      // Raycast project mouse position onto a Z depth plane (approx depth of current item)
-      const vector = new THREE.Vector3(state.pointer.x, state.pointer.y, 0.5);
-      vector.unproject(state.camera);
-      const dir = vector.sub(state.camera.position).normalize();
-      
-      // Calculate intersection distance with a Z plane relative to current depth
-      const currentZ = groupRef.current.position.z;
-      const distance = (currentZ - state.camera.position.z) / dir.z;
-      const targetPos = state.camera.position.clone().add(dir.multiplyScalar(distance));
+      // Hold the item at a comfortable fixed distance in front of the camera (simulating half-life physics gun)
+      const holdDistance = type === 'plant' ? 2.5 : 1.85;
+      const dir = state.camera.getWorldDirection(new THREE.Vector3());
+      const targetPos = state.camera.position.clone().add(dir.multiplyScalar(holdDistance));
 
       // Calculate translation velocity vector
       const deltaX = targetPos.x - groupRef.current.position.x;
@@ -63,11 +77,11 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       const deltaZ = targetPos.z - groupRef.current.position.z;
 
       // Update positions smoothly
-      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetPos.x, 0.3);
-      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetPos.y, 0.3);
-      groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetPos.z, 0.3);
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetPos.x, 0.25);
+      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetPos.y, 0.25);
+      groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetPos.z, 0.25);
 
-      // Boundary clamp inside room (slightly smaller room boundaries for large plant)
+      // Boundary clamp inside room
       const maxX = type === 'plant' ? 4.2 : 4.5;
       const minX = type === 'plant' ? -4.2 : -4.5;
       const maxZ = type === 'plant' ? 4.2 : 4.5;
@@ -92,8 +106,26 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       let newY = groupRef.current.position.y + velocityRef.current[1];
       let newZ = groupRef.current.position.z + velocityRef.current[2];
 
-      const floorHeight = type === 'plant' ? 0.4 : 0.06;
-      const bounceElasticity = type === 'plant' ? 0.35 : 0.55; // Plant pot is heavy, less bouncy
+      // Calculate current dynamic floor height based on obstacle under the item
+      let floorHeight = type === 'plant' ? 0.40 : 0.06;
+      if (type !== 'plant') {
+        // Hacking Desk surface check
+        if (newX >= -1.75 && newX <= 1.75 && newZ >= -1.0 && newZ <= 1.0) {
+          // Can land on desk if it is falling from above desk level (0.78)
+          if (groupRef.current.position.y >= 0.70) {
+            floorHeight = 0.81;
+          }
+        }
+        // Sofa seat cushions check
+        else if (newX >= 3.0 && newX <= 4.85 && newZ >= 0.9 && newZ <= 3.7) {
+          // Can land on sofa if it is falling from above sofa seat level (0.34)
+          if (groupRef.current.position.y >= 0.28) {
+            floorHeight = 0.37;
+          }
+        }
+      }
+
+      const bounceElasticity = type === 'plant' ? 0.25 : 0.50; // Plant pot is heavy, less bouncy
 
       // Floor bounce check
       if (newY <= floorHeight) {
@@ -160,6 +192,11 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
     setIsThrown(false);
     (window as any).isDraggingDraggableItem = true;
     document.body.style.cursor = 'grabbing';
+
+    // Trigger guide completion for physics
+    if (onPhysicsInteract) {
+      onPhysicsInteract();
+    }
 
     // Rustle leaves when grabbed!
     if (type === 'plant') {
@@ -328,33 +365,146 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
 // -------------------------------------------------------------
 // ENVIRONMENT DETAILS COMPONENT
 // -------------------------------------------------------------
+const tempObject = new THREE.Object3D();
+const tempColor = new THREE.Color();
+
+// Self-updating digital clock display for the moon clock
+const DigitalMoonClock: React.FC = () => {
+  const [timeStr, setTimeStr] = useState('');
+  
+  React.useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hrs = String(now.getHours()).padStart(2, '0');
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const secsVal = now.getSeconds();
+      const secs = String(secsVal).padStart(2, '0');
+      // Alternate colon for blinking effect
+      const colon = secsVal % 2 === 0 ? ':' : ' ';
+      setTimeStr(`${hrs}${colon}${mins}${colon}${secs}`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{
+      color: '#00ffcc',
+      textShadow: '0 0 10px #00ffcc, 0 0 20px #00ffcc',
+      fontFamily: 'monospace',
+      fontWeight: 'bold',
+      fontSize: '22px',
+      letterSpacing: '1px',
+      textAlign: 'center',
+      userSelect: 'none',
+      background: 'rgba(5, 2, 10, 0.8)',
+      padding: '4px 12px',
+      borderRadius: '4px',
+      border: '1px solid rgba(0, 255, 204, 0.4)',
+      boxShadow: '0 0 15px rgba(0, 255, 204, 0.15)',
+    }}>
+      {timeStr}
+    </div>
+  );
+};
+
+// Procedural real moon texture generator (craters, seas, highlands)
+const generateMoonTexture = () => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // Fill base grey moon color
+    ctx.fillStyle = '#8a8b8c';
+    ctx.fillRect(0, 0, 512, 256);
+    
+    // Draw darker maria patches (lunar seas)
+    const maria = [
+      { x: 180, y: 100, r: 40 },
+      { x: 240, y: 80, r: 60 },
+      { x: 300, y: 120, r: 45 },
+      { x: 140, y: 140, r: 35 },
+      { x: 380, y: 90, r: 30 },
+      { x: 220, y: 160, r: 50 },
+    ];
+    ctx.fillStyle = '#4c4d4f';
+    maria.forEach(m => {
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    
+    // Draw lighter highlands and craters
+    ctx.fillStyle = '#b5b6b7';
+    for (let i = 0; i < 40; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 256;
+      const r = 4 + Math.random() * 15;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw crater rim
+      ctx.strokeStyle = '#d7d8d9';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // Draw tiny dark center
+      ctx.fillStyle = '#656667';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#b5b6b7'; // restore
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+};
+
 export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
   lampOn,
   setLampOn,
   activeView,
-  onNavigate
+  onNavigate,
+  completedTutorialSteps,
+  onFridgeOpen,
+  onPhysicsInteract
 }) => {
   const [lampHovered, setLampHovered] = useState(false);
   const [serverHovered, setServerHovered] = useState(false);
   const [fridgeOpen, setFridgeOpen] = useState(false);
-  const serverLEDsRef = useRef<THREE.Group>(null);
+  const instancedLEDsRef = useRef<THREE.InstancedMesh>(null);
   const pcFansRef = useRef<THREE.Group>(null);
+  const moonRef = useRef<THREE.Mesh>(null);
+  const moonTexture = useMemo(() => generateMoonTexture(), []);
 
   // Animate server rack flashing lights & PC rotating fans
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
 
-    // 1. Server LEDs
-    if (serverLEDsRef.current) {
-      serverLEDsRef.current.children.forEach((mesh, index) => {
-        const standardMaterial = (mesh as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        if (standardMaterial) {
-          const speed = 3 + (index % 5) * 2;
-          const blink = Math.sin(time * speed + index) > 0.3;
-          const baseIntensity = serverHovered ? 2.5 : 1.2;
-          standardMaterial.emissiveIntensity = blink ? baseIntensity : 0.05;
-        }
+    // 1. Server LEDs (Instanced rendering: reduces draw calls from 60 to 1)
+    if (instancedLEDsRef.current) {
+      leds.forEach((led, index) => {
+        tempObject.position.set(led.pos[0], led.pos[1] + 0.2, led.pos[2] + 0.1);
+        tempObject.updateMatrix();
+        instancedLEDsRef.current!.setMatrixAt(index, tempObject.matrix);
+
+        const speed = 3 + (index % 5) * 2;
+        const blink = Math.sin(time * speed + index) > 0.3;
+        const baseIntensity = serverHovered ? 2.5 : 1.2;
+        const intensity = blink ? baseIntensity : 0.15;
+
+        tempColor.set(led.color).multiplyScalar(intensity);
+        instancedLEDsRef.current!.setColorAt(index, tempColor);
       });
+      instancedLEDsRef.current.instanceMatrix.needsUpdate = true;
+      if (instancedLEDsRef.current.instanceColor) {
+        instancedLEDsRef.current.instanceColor.needsUpdate = true;
+      }
     }
 
     // 2. PC Fans Rotation (Gaming Room Element)
@@ -362,6 +512,11 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
       pcFansRef.current.children.forEach((fanGroup) => {
         fanGroup.rotation.z = time * 8; // Fast spin
       });
+    }
+
+    // 3. Moon Clock Rotation
+    if (moonRef.current) {
+      moonRef.current.rotation.y = time * 0.08;
     }
   });
 
@@ -561,33 +716,64 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
       <pointLight position={[3, 3.8, 1]} color="#ffffff" intensity={2.8} distance={7} decay={1.3} />
       <pointLight position={[0, 3.8, 3.5]} color="#ffffff" intensity={2.8} distance={7} decay={1.3} />
 
-      {/* Left Wall Poster 1: Cyberpunk Netrunner Frame */}
-      <group position={[-4.94, 2.1, 1.2]} rotation={[0, Math.PI / 2, 0]}>
+      {/* Left Wall Poster 1: Cyberpunk Netrunner Frame with Credly Ethical Hacking Certificate */}
+      <group position={[-4.94, 2.1, 0.8]} rotation={[0, Math.PI / 2, 0]}>
+        {/* Outer Frame (Black Wood/Metal Bezel) */}
         <mesh castShadow>
-          <boxGeometry args={[0.8, 1.1, 0.02]} />
-          <meshStandardMaterial color="#0c051a" roughness={0.6} />
+          <boxGeometry args={[0.8, 1.1, 0.04]} />
+          <meshStandardMaterial color="#1a1126" roughness={0.7} metalness={0.2} />
         </mesh>
-        <mesh position={[0, 0, 0.012]}>
+        {/* Inner Cardboard Mat */}
+        <mesh position={[0, 0, 0.021]}>
           <planeGeometry args={[0.72, 1.02]} />
-          <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={0.6} />
+          <meshStandardMaterial color="#0c0714" roughness={0.9} />
         </mesh>
-        {/* Neon green inner crosshair lines */}
-        <Line points={[[-0.2, 0.3, 0.015], [0.2, 0.3, 0.015]]} color="#39ff14" lineWidth={1.5} />
-        <Line points={[[-0.3, -0.2, 0.015], [0.3, -0.2, 0.015]]} color="#39ff14" lineWidth={1.5} />
+        <Html
+          transform
+          scale={[0.26, 0.26, 0.26]}
+          position={[0, 0, 0.023]}
+        >
+          <div style={{ width: '150px', height: '270px', background: 'transparent', overflow: 'hidden' }}>
+            <iframe 
+              src="https://www.credly.com/embedded_badge/28f53370-7e66-464c-b4cb-ce9008d98bce" 
+              width="150" 
+              height="270" 
+              style={{ border: 'none', background: 'transparent' }}
+              scrolling="no" 
+              title="Ethical Hacking Certification"
+            />
+          </div>
+        </Html>
       </group>
 
-      {/* Left Wall Poster 2: Security Shield Frame */}
-      <group position={[-4.94, 2.1, 2.8]} rotation={[0, Math.PI / 2, 0]}>
+      {/* Left Wall Poster 2: Security Shield Frame with Credly Cybersecurity Certificate */}
+      <group position={[-4.94, 2.1, 2.0]} rotation={[0, Math.PI / 2, 0]}>
+        {/* Outer Frame (Black Wood/Metal Bezel) */}
         <mesh castShadow>
-          <boxGeometry args={[0.8, 1.1, 0.02]} />
-          <meshStandardMaterial color="#0c051a" roughness={0.6} />
+          <boxGeometry args={[0.8, 1.1, 0.04]} />
+          <meshStandardMaterial color="#1a1126" roughness={0.7} metalness={0.2} />
         </mesh>
-        <mesh position={[0, 0, 0.012]}>
+        {/* Inner Cardboard Mat */}
+        <mesh position={[0, 0, 0.021]}>
           <planeGeometry args={[0.72, 1.02]} />
-          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={0.6} />
+          <meshStandardMaterial color="#0c0714" roughness={0.9} />
         </mesh>
-        {/* Neon purple inner logo shield */}
-        <Line points={[[-0.15, 0.2, 0.015], [0.15, 0.2, 0.015], [0.2, -0.1, 0.015], [0, -0.3, 0.015], [-0.2, -0.1, 0.015], [-0.15, 0.2, 0.015]]} color="#b100e8" lineWidth={2} />
+        <Html
+          transform
+          scale={[0.26, 0.26, 0.26]}
+          position={[0, 0, 0.023]}
+        >
+          <div style={{ width: '150px', height: '270px', background: 'transparent', overflow: 'hidden' }}>
+            <iframe 
+              src="https://www.credly.com/embedded_badge/012cdd0d-8a3b-4d62-8b67-5572922723a7" 
+              width="150" 
+              height="270" 
+              style={{ border: 'none', background: 'transparent' }}
+              scrolling="no" 
+              title="Cybersecurity Certification"
+            />
+          </div>
+        </Html>
       </group>
 
       {/* Right Wall Gaming Shelf with Trophies */}
@@ -609,23 +795,57 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
         </mesh>
       </group>
 
-      {/* Front Wall (Behind Camera) sci-fi circular neon portal clock */}
+      {/* Front Wall (Behind Camera) sci-fi circular moon digital clock */}
       <group position={[0, 2.3, 4.94]} rotation={[0, Math.PI, 0]}>
         {/* Ring casing */}
         <mesh castShadow>
-          <torusGeometry args={[0.7, 0.06, 8, 32]} />
+          <torusGeometry args={[0.7, 0.04, 8, 32]} />
           <meshStandardMaterial color="#0e061a" roughness={0.3} />
         </mesh>
-        {/* Neon Clock hand 1 (Purple) */}
-        <mesh position={[0, 0, 0.02]} rotation={[0, 0, Math.PI / 6]}>
-          <boxGeometry args={[0.03, 0.45, 0.01]} />
-          <meshStandardMaterial color="#b100e8" emissive="#b100e8" emissiveIntensity={5} />
+        
+        {/* Dark Back Plate */}
+        <mesh position={[0, 0, -0.02]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
+          <cylinderGeometry args={[0.66, 0.66, 0.02, 32]} />
+          <meshStandardMaterial color="#05020c" roughness={0.9} />
         </mesh>
-        {/* Neon Clock hand 2 (Green) */}
-        <mesh position={[0, 0, 0.02]} rotation={[0, 0, -Math.PI / 3]}>
-          <boxGeometry args={[0.03, 0.32, 0.01]} />
-          <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={5} />
+
+        {/* 3D Real Moon Sphere */}
+        <mesh ref={moonRef} position={[0, 0.1, 0.05]} castShadow>
+          <sphereGeometry args={[0.26, 32, 32]} />
+          <meshStandardMaterial 
+            map={moonTexture} 
+            bumpMap={moonTexture}
+            bumpScale={0.02}
+            roughness={0.8}
+            metalness={0.1}
+          />
         </mesh>
+
+        {/* Soft Moonlight Glow */}
+        <pointLight position={[0, 0.1, 0.4]} color="#c9e3ff" intensity={1.5} distance={1.8} decay={2} />
+
+        {/* Digital Time Readout Panel */}
+        <Html
+          transform
+          scale={[0.16, 0.16, 0.16]}
+          position={[0, -0.32, 0.06]}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <DigitalMoonClock />
+            <div style={{
+              color: '#39ff14',
+              textShadow: '0 0 5px #39ff14',
+              fontFamily: 'Courier New, monospace',
+              fontSize: '8px',
+              fontWeight: 'bold',
+              letterSpacing: '1px',
+              marginTop: '4px',
+              opacity: 0.8
+            }}>
+              LUNAR TELEMETRY ACTIVE
+            </div>
+          </div>
+        </Html>
       </group>
 
       {/* ========================================== */}
@@ -653,24 +873,17 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
         <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={3} />
       </mesh>
 
-      {/* Flashing Server LEDs */}
-      <group 
-        ref={serverLEDsRef}
+      {/* Flashing Server LEDs (Optimized Instanced Mesh) */}
+      <instancedMesh
+        ref={instancedLEDsRef}
+        args={[undefined, undefined, leds.length]}
         onPointerOver={() => setServerHovered(true)}
         onPointerOut={() => setServerHovered(false)}
+        castShadow
       >
-        {leds.map((led, index) => (
-          <mesh key={index} position={[led.pos[0], led.pos[1] + 0.2, led.pos[2] + 0.1]}>
-            <boxGeometry args={[0.04, 0.04, 0.04]} />
-            <meshStandardMaterial 
-              color={led.color} 
-              emissive={led.color} 
-              emissiveIntensity={1.0} 
-              roughness={0} 
-            />
-          </mesh>
-        ))}
-      </group>
+        <boxGeometry args={[0.04, 0.04, 0.04]} />
+        <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
 
       {/* ========================================== */}
       {/*   2. COHESIVE CYBER ERGONOMIC GAMING CHAIR */}
@@ -1308,7 +1521,9 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
           <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={5} />
         </mesh>
         {/* LED Interior Backwash Light */}
-        <pointLight position={[0, 0.1, 0.15]} color="#00f0ff" intensity={4.5} distance={2.5} decay={1.5} />
+        {fridgeOpen && (
+          <pointLight position={[0, 0.1, 0.15]} color="#00f0ff" intensity={4.5} distance={2.5} decay={1.5} />
+        )}
 
         {/* Swinging transparent door hinged on the side */}
         <mesh 
@@ -1317,6 +1532,9 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
           onClick={(e) => {
             e.stopPropagation();
             setFridgeOpen(!fridgeOpen);
+            if (!fridgeOpen && onFridgeOpen) {
+              onFridgeOpen();
+            }
           }}
           onPointerOver={(e) => {
             e.stopPropagation();
@@ -1335,26 +1553,26 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
       {/*   PHYSICALLY INTERACTIVE COKE CANS & SNACKS */}
       {/* ========================================== */}
       {/* Shelf 1 (Bottom Shelf, Y = 0.38) */}
-      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.70, 0.38, 0.92]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.55, 0.38, 0.80]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 0.38, 0.68]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="water" color="#a5d6a7" initialPosition={[-4.73, 0.38, 0.80]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.70, 0.38, 0.92]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.55, 0.38, 0.80]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 0.38, 0.68]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="water" color="#a5d6a7" initialPosition={[-4.73, 0.38, 0.80]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
 
       {/* Shelf 2 (Middle Shelf, Y = 0.75) */}
-      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.55, 0.75, 0.92]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 0.75, 0.80]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.55, 0.75, 0.68]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="orange" color="#ff6d00" initialPosition={[-4.73, 0.75, 0.92]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.55, 0.75, 0.92]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 0.75, 0.80]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.55, 0.75, 0.68]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="orange" color="#ff6d00" initialPosition={[-4.73, 0.75, 0.92]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
 
       {/* Shelf 3 (Top Shelf, Y = 1.08) */}
-      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 1.08, 0.92]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.55, 1.08, 0.80]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.70, 1.08, 0.68]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="can" brand="water" color="#a5d6a7" initialPosition={[-4.55, 1.08, 0.68]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="can" brand="100plus" color="#e0e0e0" initialPosition={[-4.70, 1.08, 0.92]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="coke" color="#ff0000" initialPosition={[-4.55, 1.08, 0.80]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="sprite" color="#008a00" initialPosition={[-4.70, 1.08, 0.68]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="can" brand="water" color="#a5d6a7" initialPosition={[-4.55, 1.08, 0.68]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
 
       {/* Snacks on top of Vending Machine */}
-      <DraggableItem type="snack" color="#ff6b00" initialPosition={[-4.70, 1.34, 0.90]} fridgeOpen={fridgeOpen} />
-      <DraggableItem type="snack" color="#ffcc00" initialPosition={[-4.60, 1.34, 0.70]} fridgeOpen={fridgeOpen} />
+      <DraggableItem type="snack" color="#ff6b00" initialPosition={[-4.70, 1.34, 0.90]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
+      <DraggableItem type="snack" color="#ffcc00" initialPosition={[-4.60, 1.34, 0.70]} fridgeOpen={fridgeOpen} onPhysicsInteract={onPhysicsInteract} />
 
       {/* ========================================== */}
       {/*   WALL AIR CONDITIONER (AIRCOND)           */}
@@ -1372,7 +1590,9 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
           <sphereGeometry args={[0.012, 8, 8]} />
           <meshStandardMaterial color="#39ff14" emissive="#39ff14" emissiveIntensity={3} />
         </mesh>
-        <pointLight position={[0, -0.2, 0.15]} color="#00d8ff" intensity={1.5} distance={2.5} decay={2} />
+        {fridgeOpen && (
+          <pointLight position={[0, -0.2, 0.15]} color="#00d8ff" intensity={1.5} distance={2.5} decay={2} />
+        )}
       </group>
 
       {/* ========================================== */}
@@ -1384,8 +1604,83 @@ export const EnvironmentDetails: React.FC<EnvironmentDetailsProps> = ({
         initialPosition={[4.4, 0.4, 4.4]} 
         scale={[1.8, 1.8, 1.8]} 
         fridgeOpen={false} 
+        onPhysicsInteract={onPhysicsInteract}
       />
 
+      {/* ========================================== */}
+      {/*   MODERN CYBERPUNK GREY SOFA               */}
+      {/* ========================================== */}
+      <InteractiveObject
+        onClick={() => onNavigate('sofa')}
+        activeView={activeView}
+        targetView="sofa"
+        glowColor="#00ffcc"
+      >
+        <group position={[4.1, 0, 2.3]} rotation={[0, Math.PI / 2, 0]} scale={[1.35, 1.35, 1.35]}>
+          {/* Main Base Frame */}
+          <mesh position={[0, 0.15, 0]} castShadow receiveShadow>
+            <boxGeometry args={[1.5, 0.1, 0.75]} />
+            <meshStandardMaterial color="#2d2d30" roughness={0.7} />
+          </mesh>
+          
+          {/* Left Armrest */}
+          <mesh position={[-0.8, 0.35, 0]} castShadow>
+            <boxGeometry args={[0.15, 0.5, 0.75]} />
+            <meshStandardMaterial color="#1f1f21" roughness={0.8} />
+          </mesh>
+
+          {/* Right Armrest */}
+          <mesh position={[0.8, 0.35, 0]} castShadow>
+            <boxGeometry args={[0.15, 0.5, 0.75]} />
+            <meshStandardMaterial color="#1f1f21" roughness={0.8} />
+          </mesh>
+
+          {/* Backrest */}
+          <mesh position={[0, 0.5, 0.32]} castShadow>
+            <boxGeometry args={[1.45, 0.6, 0.12]} />
+            <meshStandardMaterial color="#242426" roughness={0.8} />
+          </mesh>
+
+          {/* Left Seat Cushion */}
+          <mesh position={[-0.375, 0.25, -0.02]} castShadow receiveShadow>
+            <boxGeometry args={[0.7, 0.16, 0.62]} />
+            <meshStandardMaterial color="#424246" roughness={0.75} />
+          </mesh>
+
+          {/* Right Seat Cushion */}
+          <mesh position={[0.375, 0.25, -0.02]} castShadow receiveShadow>
+            <boxGeometry args={[0.7, 0.16, 0.62]} />
+            <meshStandardMaterial color="#424246" roughness={0.75} />
+          </mesh>
+
+          {/* Metal legs */}
+          {/* Front Left */}
+          <mesh position={[-0.7, 0.05, -0.3]} castShadow>
+            <cylinderGeometry args={[0.02, 0.02, 0.1, 8]} />
+            <meshStandardMaterial color="#888888" metalness={0.9} roughness={0.1} />
+          </mesh>
+          {/* Front Right */}
+          <mesh position={[0.7, 0.05, -0.3]} castShadow>
+            <cylinderGeometry args={[0.02, 0.02, 0.1, 8]} />
+            <meshStandardMaterial color="#888888" metalness={0.9} roughness={0.1} />
+          </mesh>
+          {/* Back Left */}
+          <mesh position={[-0.7, 0.05, 0.3]} castShadow>
+            <cylinderGeometry args={[0.02, 0.02, 0.1, 8]} />
+            <meshStandardMaterial color="#888888" metalness={0.9} roughness={0.1} />
+          </mesh>
+          {/* Back Right */}
+          <mesh position={[0.7, 0.05, 0.3]} castShadow>
+            <cylinderGeometry args={[0.02, 0.02, 0.1, 8]} />
+            <meshStandardMaterial color="#888888" metalness={0.9} roughness={0.1} />
+          </mesh>
+        </group>
+      </InteractiveObject>
+
+      {/* 3D Guide Interactive Waypoint Markers */}
+      <TutorialMarker position={[-4.3, 0.95, 0.8]} active={!completedTutorialSteps.fridge} color="#00ffff" />
+      <TutorialMarker position={[3.5, 0.72, 2.2]} active={!completedTutorialSteps.sofa} color="#b100e8" />
+      <TutorialMarker position={[4.4, 1.4, 4.4]} active={!completedTutorialSteps.physics} color="#39ff14" />
     </group>
   );
 };

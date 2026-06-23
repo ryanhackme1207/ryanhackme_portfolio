@@ -5,15 +5,26 @@ import * as THREE from 'three';
 import type { ViewState } from '../types';
 import InteractiveObject from './InteractiveObject';
 import CyberDashboard from './CyberDashboard';
+import TutorialMarker from './TutorialMarker';
 
 interface HackingDeskProps {
   activeView: ViewState;
   onNavigate: (view: ViewState) => void;
+  completedTutorialSteps: {
+    monitor: boolean;
+    usb: boolean;
+    folder: boolean;
+    phone: boolean;
+    fridge: boolean;
+    sofa: boolean;
+    physics: boolean;
+  };
 }
 
 export const HackingDesk: React.FC<HackingDeskProps> = ({ 
   activeView, 
-  onNavigate
+  onNavigate,
+  completedTutorialSteps
 }) => {
   const usbHoloRef = useRef<THREE.Mesh>(null);
   const phoneGlowRef = useRef<THREE.Mesh>(null);
@@ -470,6 +481,12 @@ export const HackingDesk: React.FC<HackingDeskProps> = ({
           sizeAttenuation
         />
       </points>
+
+      {/* 3D Guide Interactive Waypoint Markers */}
+      <TutorialMarker position={[0, 1.45, -0.05]} active={!completedTutorialSteps.monitor} color="#b100e8" />
+      <TutorialMarker position={[-1.7, 0.95, 0.45]} active={!completedTutorialSteps.usb} color="#ff3b30" />
+      <TutorialMarker position={[1.7, 0.95, 0.45]} active={!completedTutorialSteps.folder} color="#b100e8" />
+      <TutorialMarker position={[-0.75, 0.95, 0.72]} active={!completedTutorialSteps.phone} color="#00ffcc" />
     </group>
   );
 };

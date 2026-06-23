@@ -18,7 +18,7 @@ export const GatewayScreen: React.FC<GatewayScreenProps> = ({
   useEffect(() => {
     const logs = [
       "INITIALIZING GATEWAY BOOT MATRIX...",
-      "SECURITY PROFILE DETECTED: LAI TING HONG",
+      "SECURITY PROFILE DETECTED: RYAN LAI TING HONG",
       isMobile 
         ? "HARDWARE PROBE: MOBILE CHIPSET DETECTED -> DISABLING 3D CANVAS FOR STABILITY" 
         : "HARDWARE PROBE: DESKTOP GRAPHICS ENGAGED -> 3D MODE AVAILABLE",
@@ -67,7 +67,7 @@ export const GatewayScreen: React.FC<GatewayScreenProps> = ({
               LTN_SEC_HOST://ACCESS_GATEWAY
             </h1>
             <p className="text-[10px] md:text-xs text-cyber-text/60 font-mono mt-0.5">
-              LAI TING HONG · CYBERSECURITY & NETWORK ENGINEER
+              RYAN LAI TING HONG · CYBERSECURITY & NETWORK ENGINEER
             </p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export const GatewayScreen: React.FC<GatewayScreenProps> = ({
 
         {/* Footer */}
         <p className="text-[9px] text-cyber-text/45 font-mono text-center mt-2 border-t border-cyber-neonPurple/10 pt-3">
-          SECURITY PROTOCOL ENFORCED BY LAI TING HONG // MELAKA MMU 2026
+          SECURITY PROTOCOL ENFORCED BY RYAN LAI TING HONG // CYBERJAYA MMU 2026
         </p>
 
       </div>

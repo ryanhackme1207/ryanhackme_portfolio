@@ -53,7 +53,7 @@ export const USBOverlay: React.FC<USBOverlayProps> = ({ onClose }) => {
             <Key className="w-6 h-6 text-cyber-neonPurple animate-pulse" />
             <div>
               <h2 className="text-xl font-bold tracking-wider text-cyber-heading font-mono text-gradient">ENCRYPTED_USB_KEY://DECRYPTED</h2>
-              <p className="text-xs text-cyber-text/50 font-mono">VLAN SECURE AUDIT - LAI TING HONG SKILL MATRIX</p>
+              <p className="text-xs text-cyber-text/50 font-mono">VLAN SECURE AUDIT - RYAN LAI TING HONG SKILL MATRIX</p>
             </div>
           </div>
           <button 
@@ -126,7 +126,7 @@ export const USBOverlay: React.FC<USBOverlayProps> = ({ onClose }) => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-cyber-text/85 leading-relaxed text-[11px] border-t border-cyber-neonPurple/20 pt-3">
               <div>
-                • <strong className="text-cyber-heading">MMU CS Cybersecurity Major:</strong> Studying OSPF/BGP WAN structures, Incident Response, and Pentesting at Multimedia University.
+                • <strong className="text-cyber-heading">MMU CS Cybersecurity Major:</strong> Studying OSPF/BGP WAN structures, Incident Response, and Pentesting at Multimedia University (Cyberjaya).
               </div>
               <div>
                 • <strong className="text-cyber-heading">Practical Vulnerability Audits:</strong> Hands-on experience with OWASP Top 10 threat simulation, SIEM parsing, and ACL rule hardening.
@@ -192,7 +192,7 @@ export const FolderOverlay: React.FC<FolderOverlayProps> = ({ onClose }) => {
     {
       title: "NVRGATE Note Hub",
       category: "Web Engineering & Educational Archiving",
-      description: "Programmed and launched a centralized digital library resource platform for MMU Melaka student lecture materials, safeguarding academic knowledge from faculty deletion over time.",
+      description: "Programmed and launched a centralized digital library resource platform for MMU Cyberjaya student lecture materials, safeguarding academic knowledge from faculty deletion over time.",
       tags: ["HTML5", "CSS3", "JavaScript", "Centralized Storage"],
       details: [
         "Developed a responsive multi-faculty study deck interface.",
@@ -216,7 +216,7 @@ export const FolderOverlay: React.FC<FolderOverlayProps> = ({ onClose }) => {
             <Folder className="w-6 h-6 text-cyber-neonPurple animate-pulse" />
             <div>
               <h2 className="text-xl font-bold tracking-wider text-cyber-heading font-mono text-gradient">DOSSIER_ARCHIVE://PROJECT_FILES</h2>
-              <p className="text-xs text-cyber-text/50 font-mono">INTELLIGENCE BRIEFING ON LAI TING HONG PROJECTS</p>
+              <p className="text-xs text-cyber-text/50 font-mono">INTELLIGENCE BRIEFING ON RYAN LAI TING HONG PROJECTS</p>
             </div>
           </div>
           <button 
@@ -452,7 +452,7 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ onClose }) => {
         setTimeout(() => {
           setChatMessages(prev => [
             ...prev,
-            { id: String(Date.now() + 5), sender: 'incoming', text: `Message transmitted! Your packet has been securely sealed. Lai Ting Hong will receive your ping shortly. We will reply to your address at ${visitorEmail}. Thank you, ${visitorName || 'guest'}!` }
+            { id: String(Date.now() + 5), sender: 'incoming', text: `Message transmitted! Your packet has been securely sealed. Ryan Lai Ting Hong will receive your ping shortly. We will reply to your address at ${visitorEmail}. Thank you, ${visitorName || 'guest'}!` }
           ]);
           setChatStep(4);
         }, 1500);
@@ -485,7 +485,7 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ onClose }) => {
           ...prev,
           "Available commands:",
           "  help     - Display host documentation index",
-          "  skills   - List Lai Ting Hong's core skills",
+          "  skills   - List Ryan Lai Ting Hong's core skills",
           "  status   - Show environment networking details",
           "  exploit  - Execute simulated system test",
           "  clear    - Clear console buffers",
@@ -595,7 +595,7 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ onClose }) => {
                   <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3 text-[#34c759]" /> MESSAGES</span>
                   <span>now</span>
                 </div>
-                <div className="text-xs font-bold text-white/95">Lai Ting Hong</div>
+                <div className="text-xs font-bold text-white/95">Ryan Lai Ting Hong</div>
                 <div className="text-xs text-white/70 leading-snug">Secure handshake established. Tap to open communications tunnel.</div>
               </div>
 
@@ -734,9 +734,9 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ onClose }) => {
                 </button>
                 <div className="flex flex-col items-center">
                   <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-white select-none">
-                    LH
+                    RL
                   </div>
-                  <span className="text-[10px] font-bold text-zinc-300 mt-0.5">Lai Ting Hong</span>
+                  <span className="text-[10px] font-bold text-zinc-300 mt-0.5">Ryan Lai Ting Hong</span>
                 </div>
                 <div className="w-10 h-1"></div> {/* spacer */}
               </div>
