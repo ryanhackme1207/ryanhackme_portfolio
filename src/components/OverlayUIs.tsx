@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Key, ShieldCheck, X, Folder, ExternalLink, Network, Shield, Terminal, Code, Cpu, Mail, Phone as PhoneIcon, Linkedin, Send, Radio, Lock, Wifi, Battery, Unlock, MessageSquare, Compass, ChevronLeft } from 'lucide-react';
+import { Key, ShieldCheck, X, Folder, ExternalLink, Network, Shield, Terminal, Code, Cpu, Mail, Linkedin, Send, Radio, Lock, Wifi, Battery, Unlock, MessageSquare, ChevronLeft } from 'lucide-react';
 import type { Project } from '../types';
 
 // ==========================================
@@ -637,22 +637,9 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ onClose }) => {
                   <span className="text-[10px] text-white/80 font-medium tracking-tight">Terminal</span>
                 </button>
 
-                {/* Safari (GitHub) */}
-                <a 
-                  href="https://github.com/ryanhackme" 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="flex flex-col items-center gap-1.5 focus:outline-none"
-                >
-                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#3498db] to-[#2980b9] flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                    <Compass className="w-7 h-7 text-white" />
-                  </div>
-                  <span className="text-[10px] text-white/80 font-medium tracking-tight">Safari</span>
-                </a>
-
                 {/* LinkedIn */}
                 <a 
-                  href="https://linkedin.com/in/lai-ting-hong" 
+                  href="https://www.linkedin.com/in/lai-ting-hong-692a243b7/" 
                   target="_blank" 
                   rel="noreferrer"
                   className="flex flex-col items-center gap-1.5 focus:outline-none"
@@ -673,17 +660,6 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ onClose }) => {
                   </div>
                   <span className="text-[10px] text-white/80 font-medium tracking-tight">Mail</span>
                 </a>
-
-                {/* Direct Phone */}
-                <a 
-                  href="tel:+601112248122" 
-                  className="flex flex-col items-center gap-1.5 focus:outline-none"
-                >
-                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#2ecc71] to-[#27ae60] flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                    <PhoneIcon className="w-6.5 h-6.5 text-white" />
-                  </div>
-                  <span className="text-[10px] text-white/80 font-medium tracking-tight">Phone</span>
-                </a>
               </div>
 
               {/* Bottom iOS frosted glass dock containing quick launch */}
@@ -700,14 +676,6 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ onClose }) => {
                 >
                   <Terminal className="w-6 h-6 text-[#39ff14]" />
                 </button>
-                <a 
-                  href="https://github.com/ryanhackme" 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#3498db] to-[#2980b9] flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <Compass className="w-6.5 h-6.5 text-white" />
-                </a>
                 <a 
                   href="mailto:ryan.cyber.work@gmail.com"
                   className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#e74c3c] to-[#c0392b] flex items-center justify-center active:scale-95 transition-transform"

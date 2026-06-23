@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Mail, Phone, Github, Linkedin, Cpu, Key, FileText, ChevronDown, ChevronUp, Network, Zap } from 'lucide-react';
+import { Shield, Mail, Linkedin, Cpu, Key, FileText, ChevronDown, ChevronUp, Network, Zap } from 'lucide-react';
 
 export const MobilePortfolio: React.FC = () => {
   const [openSection, setOpenSection] = useState<string | null>('about');
@@ -212,23 +212,7 @@ export const MobilePortfolio: React.FC = () => {
             <span className="truncate">Email</span>
           </a>
           <a 
-            href="tel:+60123456789" 
-            className="flex items-center gap-1.5 p-2 bg-cyber-neonGreen/5 border border-cyber-neonGreen/20 rounded hover:bg-cyber-neonGreen/15 transition-all text-cyber-text hover:text-cyber-neonGreen"
-          >
-            <Phone className="w-3.5 h-3.5 text-cyber-neonGreen flex-shrink-0" />
-            <span>Call Channel</span>
-          </a>
-          <a 
-            href="https://github.com/ryanhackme1207" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="flex items-center gap-1.5 p-2 bg-cyber-neonPurple/5 border border-cyber-neonPurple/20 rounded hover:bg-cyber-neonPurple/15 transition-all text-cyber-text hover:text-cyber-neonPurple"
-          >
-            <Github className="w-3.5 h-3.5 text-cyber-neonPurple flex-shrink-0" />
-            <span>GitHub</span>
-          </a>
-          <a 
-            href="https://linkedin.com" 
+            href="https://www.linkedin.com/in/lai-ting-hong-692a243b7/" 
             target="_blank" 
             rel="noopener noreferrer" 
             className="flex items-center gap-1.5 p-2 bg-cyber-neonGreen/5 border border-cyber-neonGreen/20 rounded hover:bg-cyber-neonGreen/15 transition-all text-cyber-text hover:text-cyber-neonGreen"
